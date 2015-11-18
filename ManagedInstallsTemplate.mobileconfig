@@ -43,7 +43,7 @@
 							<key>mcx_preference_settings</key>
 							<dict>
                                 <key>ClientIdentifier</key>
-                                <string>phase2</string>
+                                <string>site_default</string>
 								<key>SoftwareRepoURL</key>
 								<string>http://mdmunki.na.sas.com/repo</string>
                                 <key>SuppressAutoInstall</key>
