@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>PayloadIdentifier</key>
-	<string>sas.profiles.munki</string>
+	<string>test.profile</string>
 	<key>PayloadRemovalDisallowed</key>
 	<true/>
 	<key>PayloadScope</key>
@@ -26,7 +26,7 @@
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 			<key>PayloadIdentifier</key>
-			<string>sas.profiles.munki</string>
+			<string>test.profile</string>
 			<key>PayloadUUID</key>
 			<string>7059fe60-222f-0131-31db-000c2944c108</string>
 			<key>PayloadEnabled</key>
@@ -43,9 +43,9 @@
 							<key>mcx_preference_settings</key>
 							<dict>
                                 <key>ClientIdentifier</key>
-                                <string>phase2</string>
+                                <string>IT-Testing</string>
 								<key>SoftwareRepoURL</key>
-								<string>http://mdmunki.na.sas.com/repo</string>
+								<string>http://test.com</string>
                                 <key>SuppressAutoInstall</key>
                                 <false/>
                                 <key>SuppressStopButtonOnInstall</key>
