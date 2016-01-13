@@ -96,16 +96,18 @@ def prepare(args):
     all_catalog = get_all_catalog()
     names = get_unique_names(all_catalog)
     names_by_category = defaultdict(list)
+
+    output = {}
+    with open("recategorizer_help.txt") as ifile:
+        help_text = escape(ifile.read())
+    output["Comment"] = help_text
+
     for name in names:
         categories = get_categories(all_catalog, lambda n: n["name"] == name)
         most_frequent_category = Counter(categories).most_common(1)[0][0]
         names_by_category[most_frequent_category].append(name)
 
-    output = dict(names_by_category)
-    with open("recategorizer_help.txt") as ifile:
-        help_text = escape(ifile.read())
-    output["Comment"] = help_text
-
+    output.update(names_by_category)
     print FoundationPlist.writePlistToString(output)
 
 
