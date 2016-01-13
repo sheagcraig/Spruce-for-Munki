@@ -1,0 +1,11 @@
+This plist includes each unique product name sorted by category. As any product
+may have multiple pkginfo files, each with a different category assigned, this
+list uses the most-used category (ties ignored).
+
+The recategorize function will only affect those products whose names appear in
+this list. Therefore, remove any names you do not wish to change.
+
+Move each name to the list for the desired category.
+
+To add a new category, create a new key with the desired category name, with a
+list of strings (the product names) as its value.
