@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+# Print a sorted list of all pkginfo categories and the count of items
+# under each one. No category tag results in "NO CATEGORY", while an
+# empty tag results in "BLANK CATEGORY".
+
 
 import csv
 from collections import Counter
