@@ -29,6 +29,9 @@ import FoundationPlist
 import munki_helper_tools as tools
 
 
+NO_CATEGORY = "*NO CATEGORY*"
+
+
 def main():
     """Handle arguments and execute commands."""
     args = get_argument_parser().parse_args()
@@ -74,7 +77,9 @@ def run_categories(_):
     all_categories = tools.get_categories(all_catalog)
     categories = Counter(all_categories)
     if "" in categories:
-        categories["*BLANK CATEGORY*"] = categories[""]
+        if NO_CATEGORY not in categories:
+            categories[NO_CATEGORY] = 0
+        categories[NO_CATEGORY] += categories[""]
         del categories[""]
     for category in sorted(categories):
         print "{}: {}".format(category.encode("utf-8"), categories[category])
@@ -95,6 +100,8 @@ def prepare(_):
         name_filter = lambda n: n["name"] == name  # pylint: disable=cell-var-from-loop
         categories = tools.get_categories(all_catalog, name_filter)
         most_frequent_category = Counter(categories).most_common(1)[0][0]
+        if most_frequent_category == "":
+            most_frequent_category = NO_CATEGORY
         names_by_category[most_frequent_category].append(name)
 
     output.update(names_by_category)
@@ -104,6 +111,8 @@ def prepare(_):
 def update(args):
     """Update product pkginfo files to reflect specified categories."""
     changes = FoundationPlist.readPlist(os.path.expanduser(args.plist))
+
+    # Remove the comment that we instert into the output of prepare.
     if "Comment" in changes:
         del changes["Comment"]
 
@@ -112,20 +121,27 @@ def update(args):
 
     cache = tools.build_pkginfo_cache(tools.get_repo_path())
 
+    # Update only those pkginfos which need changes applied.
     for path, plist in cache.items():
-        if plist.get("name") in products:
-            for category in changes:
-                if plist.get("name") in changes[category]:
-                    new_category = category
-                    break
+        name = plist.get("name")
+        if name in products:
+            new_category = get_category_for_name(name, changes)
+            if new_category == NO_CATEGORY:
+                new_category = ""
+            category = plist.get("category")
 
-            if new_category != plist.get("category"):
-                print "Category {} doesn't match {} in {}".format(
-                    new_category, plist.get("category"), path)
+            if new_category != category:
                 plist["category"] = new_category
                 FoundationPlist.writePlist(plist, path)
+                print "Pkginfo {} category set to {}.".format(
+                     path, new_category if new_category else "''")
 
 
+def get_category_for_name(name, changes):
+    """Get the desired category for product 'name'."""
+    for category in changes:
+        if name in changes[category]:
+            return category
 
 
 if __name__ == "__main__":
