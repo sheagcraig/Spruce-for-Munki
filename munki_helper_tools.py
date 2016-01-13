@@ -47,7 +47,7 @@ def get_munkiimport_prefs():
 
 def get_categories(all_catalog, filter_func=lambda x: True):
     """Return a list of the category for each pkginfo in the repo."""
-    return [pkginfo.get("category", "NO CATEGORY") for pkginfo in all_catalog
+    return [pkginfo.get("category", "*NO CATEGORY*") for pkginfo in all_catalog
             if filter_func(pkginfo)]
 
 
