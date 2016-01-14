@@ -46,9 +46,11 @@ def get_argument_parser():
 
     # categories arguments
     phelp = ("List all categories present in the repo, and the count of "
-             "pkginfo files in each.")
+             "pkginfo files in each, or show members of a single category..")
     categories_parser = subparser.add_parser("categories", help=phelp)
     categories_parser.set_defaults(func=run_categories)
+    phelp = "Name of one or more categories to display."
+    categories_parser.add_argument("-c", "--category", help=phelp, nargs="*")
 
     # prepare arguments
     phelp = ("List all product names, sorted by category, as a plist. This "
@@ -71,9 +73,16 @@ def get_argument_parser():
     return parser
 
 
-def run_categories(_):
+def run_categories(args):
     """Output all present categories and counts of their use."""
     all_catalog = tools.get_all_catalog()
+    if not args.category:
+        get_categories_and_counts(all_catalog)
+    else:
+        get_categories_and_files(all_catalog, args.category)
+
+
+def get_categories_and_counts(all_catalog):
     all_categories = tools.get_categories(all_catalog)
     categories = Counter(all_categories)
     if "" in categories:
@@ -83,6 +92,22 @@ def run_categories(_):
         del categories[""]
     for category in sorted(categories):
         print "{}: {}".format(category.encode("utf-8"), categories[category])
+
+
+def get_categories_and_files(all_catalog, categories):
+    cache = tools.build_pkginfo_cache(tools.get_repo_path())
+    output = defaultdict(list)
+
+    # Output only those pkginfos which are in the requested categories.
+    for path, plist in cache.items():
+        category = plist.get("category")
+        if category in categories:
+            output[category].append((plist.get("name"), path))
+
+    for key, val in output.items():
+        print "Category: {}".format(key)
+        for entry in sorted(val):
+            print "\t{}, {}".format(*entry)
 
 
 def prepare(_):
