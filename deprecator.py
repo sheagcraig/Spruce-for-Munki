@@ -68,7 +68,6 @@ def get_argument_parser():
         "removed from all manifests.")
     parser = argparse.ArgumentParser(description=description)
 
-    parser.add_argument_group("Global Arguments")
     phelp = ("Move, rather than delete, pkginfos and pkgs to 'ARCHIVE'. The "
              "original folder structure will be preserved.")
     parser.add_argument("-a", "--archive", help=phelp)

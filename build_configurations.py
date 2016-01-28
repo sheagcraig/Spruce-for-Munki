@@ -24,7 +24,7 @@ def main():
 def get_argument_parser():
     """Create our argument parser."""
     description = ("Build configuration profiles with all permutations of "
-                   "configured manifests and catalogs.")
+                   "configured manifests and catalogs for client identifiers.")
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("version", help="Version to use in mobileconfig "
                         "filename")

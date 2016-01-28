@@ -1,27 +1,56 @@
 #!/usr/bin/env python
 
 
+import argparse
+from collections import defaultdict
 import csv
 import os
 
+import munki_helper_tools as tools
 import FoundationPlist
 
 
 def main():
-    munkiimport = FoundationPlist.readPlist(os.path.expanduser(
-        "~/Library/Preferences/com.googlecode.munki.munkiimport.plist"))
-    munki_repo = munkiimport.get("repo_path")
-    all_path = os.path.join(munki_repo, "catalogs", "all")
-    all_plist = FoundationPlist.readPlist(all_path)
-    all_names_and_versions = sorted(
-        [(pkginfo["name"].encode("utf-8"),
-          pkginfo.get("display_name", pkginfo["name"]).encode("utf-8"),
-          pkginfo["version"].encode("utf-8")) for pkginfo in all_plist],
-        key=lambda x: x[0])
-    with open("output.csv", "wb") as output_file:
-        writer = csv.writer(output_file)
-        writer.writerows(all_names_and_versions)
-    print all_names_and_versions
+    parser = get_argument_parser()
+    args = parser.parse_args()
+
+    all_plist = tools.get_all_catalog()
+    if args.version:
+        report = get_names_and_versions(all_plist)
+    else:
+        report = tools.get_unique_names(all_plist)
+
+    print_report(report)
+
+
+def get_argument_parser():
+    """Create our argument parser."""
+    description = (
+        "Output all unique product names present in the Munki all catalog.")
+    parser = argparse.ArgumentParser(description=description)
+
+    phelp = "Show each version of the software per name."
+    parser.add_argument("-v", "--version", help=phelp, action="store_true")
+
+    return parser
+
+
+def get_names_and_versions(all_plist):
+    names = defaultdict(list)
+    for pkginfo in all_plist:
+        names[pkginfo["name"]].append(pkginfo["version"])
+
+    return names
+
+
+def print_report(report):
+    if isinstance(report, dict):
+        for name, versions in sorted(report.items()):
+            print name
+            for version in versions:
+                print "\t" + version
+    else:
+        print "\n".join(sorted(report))
 
 
 if __name__ == "__main__":
