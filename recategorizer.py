@@ -97,6 +97,9 @@ def get_categories_and_counts(all_catalog):
 def get_categories_and_files(all_catalog, categories):
     cache = tools.build_pkginfo_cache(tools.get_repo_path())
     output = defaultdict(list)
+    if "*NO CATEGORY*" in categories:
+        categories.append("")
+        categories.append(None)
 
     # Output only those pkginfos which are in the requested categories.
     for path, plist in cache.items():
