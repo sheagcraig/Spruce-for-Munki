@@ -24,10 +24,7 @@ import munki_tools as tools
 from munki_tools import FoundationPlist
 
 
-def main():
-    parser = get_argument_parser()
-    args = parser.parse_args()
-
+def run_names(args):
     all_plist = tools.get_all_catalog()
     if args.version:
         report = get_names_and_versions(all_plist)
@@ -65,7 +62,3 @@ def print_report(report):
                 print "\t" + version
     else:
         print "\n".join(sorted(report))
-
-
-if __name__ == "__main__":
-    main()

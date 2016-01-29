@@ -40,6 +40,14 @@ def get_argument_parser():
     parser = argparse.ArgumentParser(description=description)
     subparser = parser.add_subparsers(help="Sub-command help")
 
+    phelp = (
+        "Output all unique product names present in the Munki all catalog.")
+    names_parser = subparser.add_parser("name", help=phelp)
+    names_parser.set_defaults(func=munki_tools.run_names)
+    phelp = "Show each version of the software per name."
+    names_parser.add_argument("-v", "--version", help=phelp,
+                              action="store_true")
+
     # categories arguments
     phelp = ("List all categories present in the repo, and the count of "
              "pkginfo files in each, or show members of a single category..")
