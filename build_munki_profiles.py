@@ -24,7 +24,7 @@ from munki_tools import FoundationPlist
 def main():
     args = get_argument_parser().parse_args()
     preferences = FoundationPlist.readPlist(os.path.expanduser(
-        "~/Library/Preferences/com.github.sheagcraig.build_configurations.plist"))
+        "~/Library/Preferences/com.github.sheagcraig.build_munki_profiles.plist"))
     template = preferences.get("munki_template",
                                "ManagedInstallsTemplate.mobileconfig")
     manifests = preferences.get("manifests", [])
