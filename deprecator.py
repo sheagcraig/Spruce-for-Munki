@@ -68,8 +68,9 @@ def get_argument_parser():
         "removed from all manifests.")
     parser = argparse.ArgumentParser(description=description)
 
-    phelp = ("Move, rather than delete, pkginfos and pkgs to 'ARCHIVE'. The "
-             "original folder structure will be preserved.")
+    phelp = ("Move, rather than delete, pkginfos and pkgs to the archive repo "
+             "rooted at 'ARCHIVE'. The original folder structure will be "
+             "preserved.")
     parser.add_argument("-a", "--archive", help=phelp)
     phelp = "Don't prompt before removal or archiving procedure."
     parser.add_argument("-f", "--force", help=phelp, action="store_true")
