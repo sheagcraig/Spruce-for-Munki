@@ -6,8 +6,8 @@ from collections import defaultdict
 import csv
 import os
 
-import munki_helper_tools as tools
-import FoundationPlist
+import munki_tools as tools
+from munki_tools import FoundationPlist
 
 
 def main():

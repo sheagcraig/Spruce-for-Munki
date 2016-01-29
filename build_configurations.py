@@ -4,7 +4,7 @@
 import argparse
 import os
 
-import FoundationPlist
+from munki_tools import FoundationPlist
 
 
 def main():

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 
-import FoundationPlist
+from munki_tools import FoundationPlist
 from nose.tools import *
 
 import build_configurations

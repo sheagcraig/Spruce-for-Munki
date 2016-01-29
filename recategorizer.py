@@ -25,8 +25,8 @@ from collections import Counter, defaultdict
 import os
 from xml.sax.saxutils import escape
 
-import FoundationPlist
-import munki_helper_tools as tools
+from munki_tools import FoundationPlist
+import munki_tools as tools
 
 
 NO_CATEGORY = "*NO CATEGORY*"

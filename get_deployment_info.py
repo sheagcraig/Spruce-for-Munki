@@ -6,7 +6,7 @@ import os
 import plistlib
 from xml.parsers.expat import ExpatError
 
-import FoundationPlist
+from munki_tools import FoundationPlist
 
 
 PKGINFO_EXTENSIONS = (".pkginfo", ".plist")
