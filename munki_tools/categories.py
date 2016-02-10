@@ -110,6 +110,7 @@ def update_categories(args):
 
     cache = tools.build_pkginfo_cache(tools.get_repo_path())
 
+    changed = False
     # Update only those pkginfos which need changes applied.
     for path, plist in cache.items():
         name = plist.get("name")
@@ -122,8 +123,12 @@ def update_categories(args):
             if new_category != category:
                 plist["category"] = new_category
                 FoundationPlist.writePlist(plist, path)
+                changed = True
                 print "Pkginfo {} category set to {}.".format(
                      path, new_category if new_category else "''")
+
+    if changed:
+        print "Please run 'makecatalogs' to rebuild catalogs."
 
 
 def get_category_for_name(name, changes):
