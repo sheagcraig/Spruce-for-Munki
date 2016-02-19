@@ -92,6 +92,21 @@ def get_argument_parser():
     phelp = "Remove all pkginfos and pkgs with name 'NAME'."
     deprecator_parser.add_argument("-n", "--name", help=phelp, nargs="+")
 
+    # icons arguments
+    phelp = "Report on unused icons and optionally remove or archive them."
+    icon_parser = subparser.add_parser("icons", help=phelp)
+    icon_parser.set_defaults(func=munki_tools.handle_icons)
+
+    group = icon_parser.add_mutually_exclusive_group()
+    phelp = "Delete unused icons."
+    group.add_argument("-d", "--delete", help=phelp, action="store_true")
+    phelp = ("Move, rather than delete, icons to the archive repo "
+             "rooted at 'ARCHIVE'. The original folder structure will "
+             "be preserved.")
+    group.add_argument("-a", "--archive", help=phelp)
+    phelp = "Don't prompt before removal or archiving procedure."
+    icon_parser.add_argument("-f", "--force", help=phelp, action="store_true")
+
     return parser
 
 

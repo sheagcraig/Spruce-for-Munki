@@ -56,6 +56,13 @@ def get_categories(all_catalog, filter_func=lambda x: True):
             if filter_func(pkginfo)]
 
 
+def get_icons_path():
+    """Get path to the munki icons repo according to munkiimport."""
+    munkiimport_prefs = get_munkiimport_prefs()
+    return munkiimport_prefs.get(
+        "IconURL", os.path.join(munkiimport_prefs.get("repo_path"), "icons"))
+
+
 def get_unique_names(all_catalog):
     """Return a set of product names."""
     return {pkginfo.get("name", "*NO NAME*") for pkginfo in all_catalog}
