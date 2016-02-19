@@ -81,7 +81,9 @@ def prepare_categories(_):
     names_by_category = defaultdict(list)
 
     output = {}
-    with open("recategorizer_help.txt") as ifile:
+    help_text_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                             "recategorizer_help.txt")
+    with open(help_text_path) as ifile:
         help_text = escape(ifile.read())
     output["Comment"] = help_text
 
