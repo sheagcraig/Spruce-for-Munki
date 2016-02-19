@@ -6,6 +6,41 @@ probably accumulated some cruft: piles of test pkginfos and out-of-date Chrome
 updates, for example. Spruce looks for objects in your repo which have no
 current usage, are out of date, or are otherwise "crufty".
 
+## What Can Spruce Do?
+With Spruce you can quickly generate a list of all of the unique `name`s
+of products in your repo (optionally listing each version of that
+product).
+
+You can get reports on products that are not in any manifests, how much
+wasted drive space they take up, and see reports of less-than-current
+versions of software.
+
+Spruce can generate lists of all products with a given `category`. It can
+output complete category information in plist form, and then recategorize
+products in bulk. For example, if you have three categories named
+"Config", "Configuration", and "Configuration Items", you could easily
+merge the three into one category.
+
+Spruce can remove package and pkginfo files simply by product name, or
+even by category (for example, a "To Remove" category). When Spruce
+removes a product, it removes every pkginfo file that uses that `name`,
+as well as all referenced pkg/dmg files. It will also remove all uses of
+that `name` in your repo's manifests.
+
+Optionally, you can move these files to a repo archive instead of
+deleting them. The archive folder will have the same structure as the
+active repo.
+
+Finally, Spruce can generate a list of icons not used by any products,
+following the guidelines for icon file searching specified in the Munki
+documentation. You can optionally have Spruce delete or archive all
+unused icons as well.
+
+With any of the removal or archive features, it behooves the user to have
+either a backup or to have the repo in version control.
+
+(Blog post coming about this topic).
+
 ## Usage
 *This is very much beta!*
 
@@ -41,3 +76,17 @@ optional arguments:
 Subcommands have further options, which you can learn about by running Spruce with the -h command, like this: `./spruce.py icons -h`.
 
 Obviously this is a powerful and dangerous tool. You've been warned!
+
+## TODO
+First and foremost, Spruce for Munki is missing all of the cute emojis.
+
+Fear not; emojis are coming. And new ones just for Munki: Huzzah!
+
+Other planned features:
+- Reporting options are still poorly organized. Argparse config will
+  improve both the descriptions/help text and also the means by which you
+  can customize your reporting.
+- There are a number of commented out reports. These are very specific to
+  my org for our testing cycle. I will blog about this, and include
+  information about what they mean at a later date.
+- Documentation!
