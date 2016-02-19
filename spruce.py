@@ -40,6 +40,7 @@ def get_argument_parser():
     parser = argparse.ArgumentParser(description=description)
     subparser = parser.add_subparsers(help="Sub-command help")
 
+    # name arguments
     phelp = (
         "Output all unique product names present in the Munki all catalog.")
     names_parser = subparser.add_parser("name", help=phelp)
@@ -47,6 +48,17 @@ def get_argument_parser():
     phelp = "Show each version of the software per name."
     names_parser.add_argument("-v", "--version", help=phelp,
                               action="store_true")
+
+    # report arguments
+    phelp = "Report on unused or misconfigured items in the repo."
+    report_parser = subparser.add_parser("report", help=phelp)
+    report_parser.set_defaults(func=munki_tools.run_reports)
+    phelp = "Name of one or more categories to display."
+    report_parser.add_argument("category", help=phelp, nargs="*")
+    phelp = ("Output a plist representation of all pkginfo files organized by "
+             "category. This file can be used with the recategorize command.")
+    report_parser.add_argument("-p", "--prepare", help=phelp,
+                                   action="store_true")
 
     # categories arguments
     phelp = ("List all categories present in the repo, and the count of "

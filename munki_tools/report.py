@@ -27,6 +27,10 @@ PKGINFO_EXTENSIONS = (".pkginfo", ".plist")
 
 
 def main():
+    pass
+
+
+def run_reports(_):
     munkiimport = FoundationPlist.readPlist(os.path.expanduser(
         "~/Library/Preferences/com.googlecode.munki.munkiimport.plist"))
     munki_repo = munkiimport.get("repo_path")
@@ -34,21 +38,23 @@ def main():
     all_plist = FoundationPlist.readPlist(all_path)
     cache = build_pkginfo_cache(munki_repo)
 
-    reports = (("Unattended Installs for Testing Pkgsinfo:",
-                (in_testing, is_unattended_install)),
-               ("Production Pkgsinfo lacking unattended:",
-                (in_production, is_not_unattended_install)),
-               ("force_install set for Production:",
-                (in_production,
-                 lambda x: x.get("force_install_after_date") is not None)),
-               ("force_install not set for Testing:",
-                (in_testing,
-                 lambda x: x.get("force_install_after_date") is None)),
-               ("Restart Action Configured:",
-                (lambda x: x.get("RestartAction") is not None,))
-               )
-    report_results = {report[0]: get_info(all_plist, report[1], cache) for
-                      report in reports}
+    # TODO: Need to figure out how to handle domain-specific reports.
+    # reports = (("Unattended Installs for Testing Pkgsinfo:",
+    #             (in_testing, is_unattended_install)),
+    #            ("Production Pkgsinfo lacking unattended:",
+    #             (in_production, is_not_unattended_install)),
+    #            ("force_install set for Production:",
+    #             (in_production,
+    #              lambda x: x.get("force_install_after_date") is not None)),
+    #            ("force_install not set for Testing:",
+    #             (in_testing,
+    #              lambda x: x.get("force_install_after_date") is None)),
+    #            ("Restart Action Configured:",
+    #             (lambda x: x.get("RestartAction") is not None,))
+    #            )
+    # report_results = {report[0]: get_info(all_plist, report[1], cache) for
+    #                   report in reports}
+    report_results = {}
 
     report_results["Items Not in Any Manifests"] = get_unused_in_manifests(
         cache, munki_repo)
@@ -59,7 +65,6 @@ def main():
         cache, munki_repo)
     print_output(report_results)
 
-    # TODO: Just for testing ATM.
     unused_size = 0.0
     for item in (report_results["Items Not in Any Manifests"] +
                  report_results["Out of Date Items in Production"]):

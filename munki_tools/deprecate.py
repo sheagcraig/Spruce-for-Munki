@@ -19,7 +19,6 @@
 to a deprecated repository."""
 
 
-import argparse
 from collections import Counter, defaultdict
 import glob
 import os
