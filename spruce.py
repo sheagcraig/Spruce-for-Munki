@@ -70,6 +70,28 @@ def get_argument_parser():
     update_parser.add_argument("plist", help=phelp)
     update_parser.set_defaults(func=munki_tools.update_categories)
 
+    # deprecate arguments
+    phelp = (
+        "Remove unwanted products from a Munki repo. Pkg and pkginfo files "
+        "will be removed, or optionally can be archived in an archive repo. "
+        "All products to be completely removed will then have their names "
+        "removed from all manifests.")
+    dep_parser = subparser.add_parser("deprecate", help=phelp)
+    dep_parser.set_defaults(func=munki_tools.deprecate)
+
+    phelp = ("Move, rather than delete, pkginfos and pkgs to the archive repo "
+             "rooted at 'ARCHIVE'. The original folder structure will be "
+             "preserved.")
+    dep_parser.add_argument("-a", "--archive", help=phelp)
+    phelp = "Don't prompt before removal or archiving procedure."
+    dep_parser.add_argument("-f", "--force", help=phelp, action="store_true")
+
+    deprecator_parser = dep_parser.add_argument_group("Deprecation Arguments")
+    phelp = "Remove all pkginfos and pkgs with category 'CATEGORY'."
+    deprecator_parser.add_argument("-c", "--category", help=phelp, nargs="+")
+    phelp = "Remove all pkginfos and pkgs with name 'NAME'."
+    deprecator_parser.add_argument("-n", "--name", help=phelp, nargs="+")
+
     return parser
 
 

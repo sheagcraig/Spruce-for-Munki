@@ -27,16 +27,19 @@ import shutil
 import sys
 from xml.sax.saxutils import escape
 
-from munki_tools import FoundationPlist
-import munki_tools as tools
+import FoundationPlist
+import tools
 
 
 NO_CATEGORY = "*NO CATEGORY*"
 
 
 def main():
+    pass
+
+
+def deprecate(args):
     """Handle arguments and execute commands."""
-    args = get_argument_parser().parse_args()
     cache = tools.build_pkginfo_cache(tools.get_repo_path())
 
     removals = get_files_to_remove(args, cache)
@@ -57,31 +60,6 @@ def main():
         remove(removals)
 
     remove_names_from_manifests(names)
-
-
-def get_argument_parser():
-    """Create our argument parser."""
-    description = (
-        "Remove unwanted products from a Munki repo. Pkg and pkginfo files "
-        "will be removed, or optionally can be archived in an archive repo. "
-        "All products to be completely removed will then have their names "
-        "removed from all manifests.")
-    parser = argparse.ArgumentParser(description=description)
-
-    phelp = ("Move, rather than delete, pkginfos and pkgs to the archive repo "
-             "rooted at 'ARCHIVE'. The original folder structure will be "
-             "preserved.")
-    parser.add_argument("-a", "--archive", help=phelp)
-    phelp = "Don't prompt before removal or archiving procedure."
-    parser.add_argument("-f", "--force", help=phelp, action="store_true")
-
-    deprecator_parser = parser.add_argument_group("Deprecation Arguments")
-    phelp = "Remove all pkginfos and pkgs with category 'CATEGORY'."
-    deprecator_parser.add_argument("-c", "--category", help=phelp, nargs="+")
-    phelp = "Remove all pkginfos and pkgs with name 'NAME'."
-    deprecator_parser.add_argument("-n", "--name", help=phelp, nargs="+")
-
-    return parser
 
 
 def get_files_to_remove(args, cache):
@@ -163,6 +141,7 @@ def move_to_archive(removals, archive_path):
         archive_item = item.replace(repo_prefix, archive_path, 1)
         make_folders(os.path.dirname(archive_item))
         # TODO: Disabled until GO TIME.
+        # TODO: Need to add Git awareness.
         shutil.move(item, archive_item)
 
 
