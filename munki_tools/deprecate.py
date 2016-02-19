@@ -178,7 +178,6 @@ def remove_names_from_manifests(names):
     # Use set arithmetic to remove names that are still active in the
     # repo from our removals set.
     names_to_remove = names - remaining_names
-    import pdb;pdb.set_trace()
 
     keys = ("managed_installs", "optional_installs", "managed_updates",
             "managed_uninstalls")
