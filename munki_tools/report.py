@@ -24,6 +24,7 @@ from munki_tools import FoundationPlist
 
 
 PKGINFO_EXTENSIONS = (".pkginfo", ".plist")
+IGNORED_FILES = ('.DS_Store',)
 
 
 def main():
@@ -99,7 +100,7 @@ def get_manifests(munki_repo):
     manifests = {}
     for dirpath, _, filenames in os.walk(manifest_dir):
         for filename in filenames:
-            if filename != '.DS_Store':
+            if filename not in IGNORED_FILES:
                 manifest_filename = os.path.join(dirpath, filename)
                 manifests[manifest_filename] = FoundationPlist.readPlist(
                     manifest_filename)
