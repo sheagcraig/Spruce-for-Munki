@@ -76,6 +76,8 @@ def get_categories_and_files(all_catalog, categories):
 
 def prepare_categories(_):
     """Build a plist of categories and their products."""
+    # TODO: There should be a warning or bold the name or something when a
+    # product is in multiple categories.
     all_catalog = tools.get_all_catalog()
     names = tools.get_unique_names(all_catalog)
     names_by_category = defaultdict(list)

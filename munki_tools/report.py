@@ -61,6 +61,8 @@ def run_reports(_):
     # TODO: This doesn't account for OS version differences (and
     # possibly others) that can result in a false positive for being
     # "out-of-date"
+    # Need to consider the highest version number for each OS version as
+    # "current"
     report_results["Out of Date Items in Production"] = get_out_of_date(
         cache, munki_repo)
     print_output(report_results)
