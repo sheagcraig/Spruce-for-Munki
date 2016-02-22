@@ -99,9 +99,10 @@ def get_manifests(munki_repo):
     manifests = {}
     for dirpath, _, filenames in os.walk(manifest_dir):
         for filename in filenames:
-            manifest_filename = os.path.join(dirpath, filename)
-            manifests[manifest_filename] = FoundationPlist.readPlist(
-                manifest_filename)
+            if filename != '.DS_Store':
+                manifest_filename = os.path.join(dirpath, filename)
+                manifests[manifest_filename] = FoundationPlist.readPlist(
+                    manifest_filename)
     return manifests
 
 
