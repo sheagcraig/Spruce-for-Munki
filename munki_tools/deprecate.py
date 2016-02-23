@@ -68,6 +68,8 @@ def get_files_to_remove(args, cache):
         removals += get_removals_for_categories(args.category, cache)
     if args.name:
         removals += get_removals_for_names(args.name, cache)
+    if args.plist:
+        removals += get_removals_from_plist(args.plist, cache)
     return removals
 
 
@@ -99,6 +101,10 @@ def get_removals_for_names(names, cache):
                     os.path.join(pkg_prefix, plist["installer_item_location"]))
 
     return pkginfo_removals + pkg_removals
+
+
+def get_removals_from_plist(path, cache):
+    pass
 
 
 def get_names_to_remove(removals, cache):

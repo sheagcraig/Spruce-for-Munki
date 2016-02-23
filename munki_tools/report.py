@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from collections import OrderedDict
 from distutils.version import LooseVersion
 import os
 import plistlib
@@ -32,7 +33,7 @@ def main():
     pass
 
 
-def run_reports(_):
+def run_reports(args):
     munkiimport = FoundationPlist.readPlist(os.path.expanduser(
         "~/Library/Preferences/com.googlecode.munki.munkiimport.plist"))
     munki_repo = munkiimport.get("repo_path")
@@ -40,6 +41,7 @@ def run_reports(_):
     all_plist = FoundationPlist.readPlist(all_path)
     cache, errors = tools.build_pkginfo_cache_with_errors(munki_repo)
 
+    # TODO: Need to reorganize to have a report item be a dict rather than list
     # TODO: Need to figure out how to handle domain-specific reports.
     # reports = (("Unattended Installs for Testing Pkgsinfo:",
     #             (in_testing, is_unattended_install)),
@@ -56,7 +58,7 @@ def run_reports(_):
     #            )
     # report_results = {report[0]: get_info(all_plist, report[1], cache) for
     #                   report in reports}
-    report_results = {}
+    report_results = OrderedDict()
 
     report_results["Items Not in Any Manifests"] = get_unused_in_manifests(
         cache, munki_repo)
@@ -67,34 +69,21 @@ def run_reports(_):
     # "current"
     report_results["Out of Date Items in Production"] = get_out_of_date(
         cache, munki_repo)
-    report_results["Pkgsinfo With Syntax Errors"] = errors.items()
-    print_output(report_results)
+    # report_results["Pkgsinfo With Syntax Errors"] = errors.items()
+    # print_output_list(report_results)
+    report_results["Unused Item Disk Usage"] = get_unused_disk_usage(
+        report_results, cache)
 
-    unused_size = 0.0
-    for item in (report_results["Items Not in Any Manifests"] +
-                 report_results["Out of Date Items in Production"]):
-        pkginfo = cache[item[2]]
-        size = pkginfo.get("installer_item_size")
-        if size:
-            unused_size += size
-
-    # Munki sizes are in kilobytes, so convert to true GIGA!
-    print "Unused files account for {:,.2f} gigabytes".format(
-        unused_size / (1024 ** 2))
+    if args.plist:
+        print FoundationPlist.writePlistToString(report_results)
+    else:
+        print_output(report_results)
 
 
 def get_unused_in_manifests(cache, munki_repo):
     manifests = get_manifests(munki_repo)
     used_items = get_used_items(manifests)
-    unused_items = get_unused_items_info(cache, used_items)
-    return unused_items
-
-
-def get_out_of_date(cache, munki_repo):
-    manifests = get_manifests(munki_repo)
-    used_items = get_used_items(manifests)
-    unused_items = get_out_of_date_info(cache, used_items)
-    return unused_items
+    return get_unused_items_info(cache, used_items)
 
 
 def get_manifests(munki_repo):
@@ -136,14 +125,22 @@ def get_unused_items_info(cache, used_items):
             output_size = ("{:,.2f}M".format(float(size) / 1024) if size else
                            "")
             unused_items.append(
-                (pkginfo.get("name", ""), pkginfo.get("version", ""),
-                 pkginfo_fname, output_size))
+                {"name": pkginfo.get("name", ""),
+                 "version": pkginfo.get("version", ""),
+                 "path": pkginfo_fname,
+                 "size": output_size})
 
     return sorted(unused_items)
 
 
+def get_out_of_date(cache, munki_repo):
+    manifests = get_manifests(munki_repo)
+    used_items = get_used_items(manifests)
+    return get_out_of_date_info(cache, used_items)
+
+
 def get_out_of_date_info(cache, used_items):
-    candidate_items = {}
+    out_of_date_items = []
     for pkginfo_fname, pkginfo in cache.items():
         name = pkginfo.get("name")
         if (name in used_items and
@@ -152,24 +149,47 @@ def get_out_of_date_info(cache, used_items):
             size = pkginfo.get("installer_item_size", 0)
             output_size = ("{:,.2f}M".format(float(size) / 1024) if size else
                            "")
-            if name not in candidate_items:
-                candidate_items[name] = []
-            candidate_items[name].append(
-                (pkginfo.get("name"), pkginfo.get("version"), pkginfo_fname,
-                 output_size, pkginfo.get(
-                     "minimum_os_version", "NO_MIN_OS_VERS"),
-                 pkginfo.get("maximum_os_version", "NO_MAX_OS_VERS")))
-    out_of_date_items = []
-    for item_name, items in candidate_items.items():
-        sorted_items = sorted(items, key=lambda x: LooseVersion(x[1]))
-        _ = sorted_items.pop()
-        out_of_date_items += sorted_items
+            item = {
+                "name": name,
+                "size": output_size,
+                "path": pkginfo_fname,
+                "version": pkginfo.get("version", ""),
+                "minimum_os_version": pkginfo.get("minimum_os_version", ""),
+                "maximum_os_version": pkginfo.get("maximum_os_version", "")}
+            out_of_date_items.append(item)
+
+    return sorted(out_of_date_items,
+                  key=lambda x: (x["name"], LooseVersion(x["version"])))
 
 
-    return sorted(out_of_date_items)
+def get_unused_disk_usage(report_results, cache):
+    unused_size = 0.0
+    for item in (report_results["Items Not in Any Manifests"] +
+                 report_results["Out of Date Items in Production"]):
+        pkginfo = cache[item["path"]]
+        size = pkginfo.get("installer_item_size")
+        if size:
+            unused_size += size
+
+    # Munki sizes are in kilobytes, so convert to true GIGA!
+    return [{"Unused files account for": "{:,.2f} gigabytes".format(
+        unused_size / (1024 ** 2))}]
 
 
 def print_output(report_results):
+    """Print formatted reports."""
+    for report in report_results:
+        print "{}:".format(report)
+        for item in report_results[report]:
+            print "\t" + "-" * 20
+            for key, val in item.items():
+                print "\t{}: {}".format(key, val)
+
+        print
+
+
+
+def print_output_list(report_results):
     for report in sorted(report_results):
         print report
         print_info(report_results[report])

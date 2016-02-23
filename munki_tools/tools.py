@@ -18,9 +18,12 @@
 """Helper functions for interacting with Munki repos."""
 
 
+import imp
 import os
+import sys
 
-import FoundationPlist
+sys.path.append("/usr/local/munki")
+from munkilib import FoundationPlist
 
 
 PKGINFO_EXTENSIONS = (".pkginfo", ".plist")
@@ -68,6 +71,7 @@ def get_unique_names(all_catalog):
     return {pkginfo.get("name", "*NO NAME*") for pkginfo in all_catalog}
 
 
+# TODO: This needs to mount the repo if it isn't already.
 def build_pkginfo_cache(repo):
     """Build a dictionary of pkgsinfo.
 

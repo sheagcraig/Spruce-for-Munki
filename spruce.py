@@ -53,6 +53,9 @@ def get_argument_parser():
     phelp = "Report on unused or misconfigured items in the repo."
     report_parser = subparser.add_parser("report", help=phelp)
     report_parser.set_defaults(func=munki_tools.run_reports)
+    phelp = "Output report in plist format (for use with other functions)."
+    report_parser.add_argument("-p", "--plist", help=phelp,
+                               action="store_true")
 
     # categories arguments
     phelp = ("List all categories present in the repo, and the count of "
