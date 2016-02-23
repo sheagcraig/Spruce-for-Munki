@@ -41,24 +41,24 @@ def run_reports(args):
     all_plist = FoundationPlist.readPlist(all_path)
     cache, errors = tools.build_pkginfo_cache_with_errors(munki_repo)
 
-    # TODO: Need to reorganize to have a report item be a dict rather than list
+    # TODO: Add sorting to output or reporting.
     # TODO: Need to figure out how to handle domain-specific reports.
-    # reports = (("Unattended Installs for Testing Pkgsinfo:",
-    #             (in_testing, is_unattended_install)),
-    #            ("Production Pkgsinfo lacking unattended:",
-    #             (in_production, is_not_unattended_install)),
-    #            ("force_install set for Production:",
-    #             (in_production,
-    #              lambda x: x.get("force_install_after_date") is not None)),
-    #            ("force_install not set for Testing:",
-    #             (in_testing,
-    #              lambda x: x.get("force_install_after_date") is None)),
-    #            ("Restart Action Configured:",
-    #             (lambda x: x.get("RestartAction") is not None,))
-    #            )
-    # report_results = {report[0]: get_info(all_plist, report[1], cache) for
-    #                   report in reports}
-    report_results = OrderedDict()
+    reports = (("Unattended Installs for Testing Pkgsinfo:",
+                (in_testing, is_unattended_install)),
+               ("Production Pkgsinfo lacking unattended",
+                (in_production, is_not_unattended_install)),
+               ("force_install set for Production",
+                (in_production,
+                 lambda x: x.get("force_install_after_date") is not None)),
+               ("force_install not set for Testing",
+                (in_testing,
+                 lambda x: x.get("force_install_after_date") is None)),
+               ("Restart Action Configured",
+                (lambda x: x.get("RestartAction") is not None,))
+               )
+    results = {report[0]: get_info(all_plist, report[1], cache) for report in
+               reports}
+    report_results = OrderedDict(results)
 
     report_results["Items Not in Any Manifests"] = get_unused_in_manifests(
         cache, munki_repo)
@@ -69,8 +69,7 @@ def run_reports(args):
     # "current"
     report_results["Out of Date Items in Production"] = get_out_of_date(
         cache, munki_repo)
-    # report_results["Pkgsinfo With Syntax Errors"] = errors.items()
-    # print_output_list(report_results)
+    report_results["Pkgsinfo With Syntax Errors"] = [errors]
     report_results["Unused Item Disk Usage"] = get_unused_disk_usage(
         report_results, cache)
 
@@ -188,7 +187,6 @@ def print_output(report_results):
         print
 
 
-
 def print_output_list(report_results):
     for report in sorted(report_results):
         print report
@@ -197,10 +195,11 @@ def print_output_list(report_results):
 
 
 def get_info(all_plist, conditions, cache):
-    return sorted({(pkginfo["name"], pkginfo["version"],
-                    find_pkginfo_file_in_repo(pkginfo, cache)) for pkginfo in
-                   all_plist if all([condition(pkginfo) for condition in
-                                     conditions])})
+    return sorted([{"name": pkginfo["name"],
+                    "version": pkginfo["version"],
+                    "path": find_pkginfo_file_in_repo(pkginfo, cache)}
+                   for pkginfo in all_plist if
+                   all([condition(pkginfo) for condition in conditions])])
 
 
 def in_testing(pkginfo):
