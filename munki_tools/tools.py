@@ -69,20 +69,51 @@ def get_unique_names(all_catalog):
 
 
 def build_pkginfo_cache(repo):
-    """Return a dict of all pkginfo files in the repo."""
+    """Build a dictionary of pkgsinfo.
+
+    Args:
+        repo: String path to the base of a Munki repo.
+
+    Returns:
+        Dictionary of pkgsinfo with:
+            key: path to pkginfo
+            val: pkginfo dictionary
+    """
+    pkginfos, _ = build_pkginfo_cache_with_errors(repo)
+    return pkginfos
+
+
+def build_pkginfo_cache_with_errors(repo):
+    """Build a dictionary of pkgsinfo.
+
+    Args:
+        repo: String path to the base of a Munki repo.
+
+    Returns:
+        Tuple of:
+            Dictionary of pkgsinfo with:
+                key: path to pkginfo.
+                val: pkginfo dictionary.
+            Dictionary of errors with:
+                key: path to pkginfo.
+                val: Exception message.
+
+    """
     pkginfos = {}
+    errors = {}
     pkginfo_dir = os.path.join(repo, "pkgsinfo")
     for dirpath, _, filenames in os.walk(pkginfo_dir):
         for ifile in filter(is_pkginfo, filenames):
             path = os.path.join(dirpath, ifile)
             try:
                 pkginfo_file = FoundationPlist.readPlist(path)
-            except FoundationPlist.FoundationPlistException:
-                continue
+            except FoundationPlist.FoundationPlistException as error:
+                errors[path] = error.message
+                next
 
             pkginfos[path] = pkginfo_file
 
-    return pkginfos
+    return (pkginfos, errors)
 
 
 def is_pkginfo(candidate):

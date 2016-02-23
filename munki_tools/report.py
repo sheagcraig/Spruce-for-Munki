@@ -20,6 +20,7 @@ import os
 import plistlib
 from xml.parsers.expat import ExpatError
 
+from munki_tools import tools
 from munki_tools import FoundationPlist
 
 
@@ -37,7 +38,7 @@ def run_reports(_):
     munki_repo = munkiimport.get("repo_path")
     all_path = os.path.join(munki_repo, "catalogs", "all")
     all_plist = FoundationPlist.readPlist(all_path)
-    cache = build_pkginfo_cache(munki_repo)
+    cache, errors = tools.build_pkginfo_cache_with_errors(munki_repo)
 
     # TODO: Need to figure out how to handle domain-specific reports.
     # reports = (("Unattended Installs for Testing Pkgsinfo:",
@@ -66,6 +67,7 @@ def run_reports(_):
     # "current"
     report_results["Out of Date Items in Production"] = get_out_of_date(
         cache, munki_repo)
+    report_results["Pkgsinfo With Syntax Errors"] = errors.items()
     print_output(report_results)
 
     unused_size = 0.0
@@ -134,8 +136,8 @@ def get_unused_items_info(cache, used_items):
             output_size = ("{:,.2f}M".format(float(size) / 1024) if size else
                            "")
             unused_items.append(
-                (pkginfo.get("name"), pkginfo.get("version"), pkginfo_fname,
-                 output_size))
+                (pkginfo.get("name", ""), pkginfo.get("version", ""),
+                 pkginfo_fname, output_size))
 
     return sorted(unused_items)
 
@@ -229,22 +231,6 @@ def find_pkginfo_file_in_repo(pkginfo, pkginfos):
             return pkg_key
 
     return None
-
-
-def build_pkginfo_cache(repo):
-    pkginfos = {}
-    pkginfo_dir = os.path.join(repo, "pkgsinfo")
-    for dirpath, dirnames, filenames in os.walk(pkginfo_dir):
-        for file in filter(is_pkginfo, filenames):
-            path = os.path.join(dirpath, file)
-            try:
-                pkginfo_file = plistlib.readPlist(path)
-            except ExpatError:
-                continue
-
-            pkginfos[path] = pkginfo_file
-
-    return pkginfos
 
 
 def is_pkginfo(candidate):
