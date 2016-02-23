@@ -113,7 +113,7 @@ def build_pkginfo_cache_with_errors(repo):
                 pkginfo_file = FoundationPlist.readPlist(path)
             except FoundationPlist.FoundationPlistException as error:
                 errors[path] = error.message
-                next
+                continue
 
             pkginfos[path] = pkginfo_file
 

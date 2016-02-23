@@ -193,7 +193,7 @@ def remove_names_from_manifests(names):
             manifest = FoundationPlist.readPlist(manifest_path)
         except FoundationPlist.FoundationPlistException:
             print "Error reading manifest {}".format(manifest_path)
-            next
+            continue
         print "Looking for name removals in {}".format(manifest_path)
 
         for key in keys:
