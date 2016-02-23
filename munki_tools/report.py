@@ -21,12 +21,63 @@ import os
 import plistlib
 from xml.parsers.expat import ExpatError
 
-from munki_tools import tools
-from munki_tools import FoundationPlist
+import tools
+import FoundationPlist
 
 
 PKGINFO_EXTENSIONS = (".pkginfo", ".plist")
 IGNORED_FILES = ('.DS_Store',)
+
+
+class Report(object):
+    """Encapsulates behavior of a Spruce Report.
+
+    Attributes:
+        name: String name for report.
+        items_order: A list of item key names defining their print output
+            order.
+        metadata_order: A list of metadata key names defining their print
+            output order.
+    """
+    name = "Report"
+    items_order = []
+    metadata_order = []
+    separator = "-" * 20
+
+    def __init__(self, repo_data):
+        self.items = []
+        self.metadata = []
+        self._run_report(repo_data)
+
+    def __str__(self):
+        return "{}: {}".format(self.__class__, self.name)
+
+    def _run_report(self, repo_data):
+        # pass
+
+    def print_report(self):
+        print "{}:".format(self.name)
+        self._print_section("items")
+        print
+        self._print_section("metadata")
+        print
+
+    def _print_section(self, property):
+        section = getattr(self, property)
+        print "\t{}:".format(property.title())
+        print "\t" + self.separator
+        for item in section:
+            order = getattr(self, property + "_order")
+            for key in order:
+                print "\t{}: {}".format(key, item[key])
+            for key in item:
+                if not key in order:
+                    print "\t{}: {}".format(key, item[key])
+            print "\t" + self.separator
+
+    def as_dict(self):
+        return {"items": self.items, "metadata": self.metadata}
+
 
 
 def main():
