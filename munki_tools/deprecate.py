@@ -68,8 +68,8 @@ def get_files_to_remove(args, cache):
         removals += get_removals_for_categories(args.category, cache)
     if args.name:
         removals += get_removals_for_names(args.name, cache)
-    if args.plist:
-        removals += get_removals_from_plist(args.plist, cache)
+    # if args.plist:
+    #     removals += get_removals_from_plist(args.plist, cache)
     return removals
 
 
