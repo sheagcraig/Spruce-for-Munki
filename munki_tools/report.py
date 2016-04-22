@@ -28,7 +28,7 @@ import FoundationPlist
 PKGINFO_EXTENSIONS = (".pkginfo", ".plist")
 IGNORED_FILES = ('.DS_Store',)
 
-
+# TODO: Sort items in Report.
 class Report(object):
     """Encapsulates behavior of a Spruce Report.
 
@@ -199,6 +199,24 @@ class PkgsinfoWithErrorsReport(Report):
             self.items.append({"path": key, "error": value})
 
 
+class UnusedDiskUsageReport(Report):
+    name = "Unused Item Disk Usage"
+
+    def run_report(self, cache):
+        unused_size = 0.0
+        for item in cache["unused_items"]:
+            pkginfo = cache["pkgsinfo"][item["path"]]
+            size = pkginfo.get("installer_item_size")
+            if size:
+                unused_size += size
+
+        # Munki sizes are in kilobytes, so convert to true GIGA!
+        self.metadata.append(
+            {"Unused files account for": "{:,.2f} gigabytes".format(
+                unused_size / (1024 ** 2))})
+
+
+
 def run_reports(args):
     munkiimport = FoundationPlist.readPlist(os.path.expanduser(
         "~/Library/Preferences/com.googlecode.munki.munkiimport.plist"))
@@ -207,6 +225,7 @@ def run_reports(args):
     all_plist = FoundationPlist.readPlist(all_path)
     cache, errors = tools.build_pkginfo_cache_with_errors(munki_repo)
 
+    # TODO: Finish classing up reports.
     # TODO: Add sorting to output or reporting.
     # TODO: Need to figure out how to handle domain-specific reports.
     # reports = (("Unattended Installs for Testing Pkgsinfo:",
@@ -235,12 +254,12 @@ def run_reports(args):
 
     report_results.append(PathIssuesReport(expanded_cache))
     report_results.append(MissingInstallerReport(expanded_cache))
+    report_results.append(PkgsinfoWithErrorsReport(errors))
     report_results.append(OutOfDateReport(expanded_cache))
     report_results.append(NoUsageReport(expanded_cache))
-    report_results.append(PkgsinfoWithErrorsReport(errors))
-
-    # report_results["Unused Item Disk Usage"] = get_unused_disk_usage(
-    #     report_results, cache)
+    expanded_cache["unused_items"] = [item for report in report_results[-2:]
+                                      for item in report.items]
+    report_results.append(UnusedDiskUsageReport(expanded_cache))
 
     if args.plist:
         dict_reports = {report.name: report.as_dict() for report in
@@ -249,7 +268,6 @@ def run_reports(args):
     else:
         for report in report_results:
             report.print_report()
-        # print_output(report_results)
 
 
 def get_manifests(munki_repo):
@@ -309,20 +327,6 @@ def get_out_of_date_info(cache, used_items):
 
     return sorted(out_of_date_items,
                   key=lambda x: (x["name"], LooseVersion(x["version"])))
-
-
-def get_unused_disk_usage(report_results, cache):
-    unused_size = 0.0
-    for item in (report_results["Items Not in Any Manifests"] +
-                 report_results["Out of Date Items in Production"]):
-        pkginfo = cache[item["path"]]
-        size = pkginfo.get("installer_item_size")
-        if size:
-            unused_size += size
-
-    # Munki sizes are in kilobytes, so convert to true GIGA!
-    return [{"Unused files account for": "{:,.2f} gigabytes".format(
-        unused_size / (1024 ** 2))}]
 
 
 def print_output(report_results):
