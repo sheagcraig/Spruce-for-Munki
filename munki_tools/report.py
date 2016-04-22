@@ -165,8 +165,28 @@ class MissingInstallerReport(Report):
                               "missing_installer": installer_path}
                     self.items.append(result)
 
-def main():
-    pass
+
+class NoUsageReport(Report):
+    name = "Items Not in Any Manifests"
+    items_order = ["name", "path"]
+
+    def run_report(self, repo_data):
+        used_items = get_used_items(repo_data["manifests"])
+        return self.get_unused_items_info(repo_data["pkgsinfo"], used_items)
+
+    def get_unused_items_info(self, cache, used_items):
+        unused_items = []
+        for pkginfo_fname, pkginfo in cache.items():
+            if (pkginfo.get("name") not in used_items and
+                    not pkginfo.get("installer_type") == "apple_update_metadata"):
+                size = pkginfo.get("installer_item_size", 0)
+                output_size = ("{:,.2f}M".format(float(size) / 1024) if size else
+                            "")
+                self.items.append(
+                    {"name": pkginfo.get("name", ""),
+                    "version": pkginfo.get("version", ""),
+                    "path": pkginfo_fname,
+                    "size": output_size})
 
 
 def run_reports(args):
@@ -179,46 +199,48 @@ def run_reports(args):
 
     # TODO: Add sorting to output or reporting.
     # TODO: Need to figure out how to handle domain-specific reports.
-    reports = (("Unattended Installs for Testing Pkgsinfo:",
-                (in_testing, is_unattended_install)),
-               ("Production Pkgsinfo lacking unattended",
-                (in_production, is_not_unattended_install)),
-               ("force_install set for Production",
-                (in_production,
-                 lambda x: x.get("force_install_after_date") is not None)),
-               ("force_install not set for Testing",
-                (in_testing,
-                 lambda x: x.get("force_install_after_date") is None)),
-               ("Restart Action Configured",
-                (lambda x: x.get("RestartAction") is not None,))
-               )
-    results = {report[0]: get_info(all_plist, report[1], cache) for report in
-               reports}
-    report_results = OrderedDict(results)
+    # reports = (("Unattended Installs for Testing Pkgsinfo:",
+    #             (in_testing, is_unattended_install)),
+    #            ("Production Pkgsinfo lacking unattended",
+    #             (in_production, is_not_unattended_install)),
+    #            ("force_install set for Production",
+    #             (in_production,
+    #              lambda x: x.get("force_install_after_date") is not None)),
+    #            ("force_install not set for Testing",
+    #             (in_testing,
+    #              lambda x: x.get("force_install_after_date") is None)),
+    #            ("Restart Action Configured",
+    #             (lambda x: x.get("RestartAction") is not None,))
+    #            )
+    # results = {report[0]: get_info(all_plist, report[1], cache) for report in
+    #            reports}
+    # report_results = OrderedDict(results)
+    # report_results = OrderedDict()
+    report_results = []
 
-    report_results["Items Not in Any Manifests"] = get_unused_in_manifests(
-        cache, munki_repo)
-    # TODO: This doesn't account for OS version differences (and
-    # possibly others) that can result in a false positive for being
-    # "out-of-date"
-    # Need to consider the highest version number for each OS version as
-    # "current"
-    report_results["Out of Date Items in Production"] = get_out_of_date(
-        cache, munki_repo)
-    report_results["Pkgsinfo With Syntax Errors"] = [errors]
-    report_results["Unused Item Disk Usage"] = get_unused_disk_usage(
-        report_results, cache)
+    expanded_cache = {}
+    expanded_cache["pkgsinfo"] = cache
+    expanded_cache["manifests"] = get_manifests(munki_repo)
+    expanded_cache["munki_repo"] = munki_repo
+
+    report_results.append(PathIssuesReport(expanded_cache))
+    report_results.append(MissingInstallerReport(expanded_cache))
+    report_results.append(OutOfDateReport(expanded_cache))
+    report_results.append(NoUsageReport(expanded_cache))
+
+    # report_results["Pkgsinfo With Syntax Errors"] = [errors]
+
+    # report_results["Unused Item Disk Usage"] = get_unused_disk_usage(
+    #     report_results, cache)
 
     if args.plist:
-        print FoundationPlist.writePlistToString(report_results)
+        dict_reports = {report.name: report.as_dict() for report in
+                        report_results}
+        print FoundationPlist.writePlistToString(dict_reports)
     else:
-        print_output(report_results)
-
-
-def get_unused_in_manifests(cache, munki_repo):
-    manifests = get_manifests(munki_repo)
-    used_items = get_used_items(manifests)
-    return get_unused_items_info(cache, used_items)
+        for report in report_results:
+            report.print_report()
+        # print_output(report_results)
 
 
 def get_manifests(munki_repo):
@@ -249,23 +271,6 @@ def get_used_items(manifests):
                 if items:
                     used_items.update(items)
     return used_items
-
-
-def get_unused_items_info(cache, used_items):
-    unused_items = []
-    for pkginfo_fname, pkginfo in cache.items():
-        if (pkginfo.get("name") not in used_items and
-                not pkginfo.get("installer_type") == "apple_update_metadata"):
-            size = pkginfo.get("installer_item_size", 0)
-            output_size = ("{:,.2f}M".format(float(size) / 1024) if size else
-                           "")
-            unused_items.append(
-                {"name": pkginfo.get("name", ""),
-                 "version": pkginfo.get("version", ""),
-                 "path": pkginfo_fname,
-                 "size": output_size})
-
-    return sorted(unused_items)
 
 
 def get_out_of_date(cache, munki_repo):
