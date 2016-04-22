@@ -67,16 +67,17 @@ class Report(object):
 
     def _print_section(self, property):
         section = getattr(self, property)
-        print "\t{}:".format(property.title())
-        print "\t" + self.separator
-        for item in section:
-            order = getattr(self, property + "_order")
-            for key in order:
-                print "\t{}: {}".format(key, item[key])
-            for key in item:
-                if not key in order:
-                    print "\t{}: {}".format(key, item[key])
+        if len(section) > 0:
+            print "\t{}:".format(property.title())
             print "\t" + self.separator
+            for item in section:
+                order = getattr(self, property + "_order")
+                for key in order:
+                    print "\t{}: {}".format(key, item[key])
+                for key in item:
+                    if not key in order:
+                        print "\t{}: {}".format(key, item[key])
+                print "\t" + self.separator
 
     def as_dict(self):
         return {"items": self.items, "metadata": self.metadata}
@@ -172,7 +173,7 @@ class NoUsageReport(Report):
 
     def run_report(self, repo_data):
         used_items = get_used_items(repo_data["manifests"])
-        return self.get_unused_items_info(repo_data["pkgsinfo"], used_items)
+        self.get_unused_items_info(repo_data["pkgsinfo"], used_items)
 
     def get_unused_items_info(self, cache, used_items):
         unused_items = []
@@ -187,6 +188,15 @@ class NoUsageReport(Report):
                     "version": pkginfo.get("version", ""),
                     "path": pkginfo_fname,
                     "size": output_size})
+
+
+class PkgsinfoWithErrorsReport(Report):
+    name = "Pkgsinfo with Syntax Errors"
+    items_order = ["path"]
+
+    def run_report(self, errors):
+        for key, value in errors.items():
+            self.items.append({"path": key, "error": value})
 
 
 def run_reports(args):
@@ -227,8 +237,7 @@ def run_reports(args):
     report_results.append(MissingInstallerReport(expanded_cache))
     report_results.append(OutOfDateReport(expanded_cache))
     report_results.append(NoUsageReport(expanded_cache))
-
-    # report_results["Pkgsinfo With Syntax Errors"] = [errors]
+    report_results.append(PkgsinfoWithErrorsReport(errors))
 
     # report_results["Unused Item Disk Usage"] = get_unused_disk_usage(
     #     report_results, cache)
