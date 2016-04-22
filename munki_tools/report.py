@@ -47,20 +47,23 @@ class Report(object):
     def __init__(self, repo_data):
         self.items = []
         self.metadata = []
-        self._run_report(repo_data)
+        self.run_report(repo_data)
 
     def __str__(self):
         return "{}: {}".format(self.__class__, self.name)
 
-    def _run_report(self, repo_data):
-        # pass
+    def run_report(self, repo_data):
+        pass
 
     def print_report(self):
         print "{}:".format(self.name)
-        self._print_section("items")
-        print
-        self._print_section("metadata")
-        print
+        if self.items or self.metadata:
+            self._print_section("items")
+            print
+            self._print_section("metadata")
+            print
+        else:
+            print "\tNone"
 
     def _print_section(self, property):
         section = getattr(self, property)
@@ -79,6 +82,88 @@ class Report(object):
         return {"items": self.items, "metadata": self.metadata}
 
 
+class OutOfDateReport(Report):
+    name = "Out of Date Items in Production"
+    items_order = ["name", "path"]
+    # TODO: This doesn't account for OS version differences (and
+    # possibly others) that can result in a false positive for being
+    # "out-of-date"
+    # Need to consider the highest version number for each OS version as
+    # "current"
+
+    def run_report(self, repo_data):
+        manifests = repo_data["manifests"]
+        used_items = get_used_items(manifests)
+        self.items = self.get_out_of_date_info(
+            repo_data["pkgsinfo"], used_items)
+        # self.metadata = self.get_metadata()
+
+    def get_out_of_date_info(self, pkgsinfo, used_items):
+        out_of_date_items = []
+        for pkginfo_fname, pkginfo in pkgsinfo.items():
+            name = pkginfo.get("name")
+            if (name in used_items and
+                not pkginfo.get("installer_type") == "apple_update_metadata" and
+                in_production(pkginfo)):
+                size = pkginfo.get("installer_item_size", 0)
+                output_size = ("{:,.2f}M".format(float(size) / 1024) if size else
+                            "")
+                item = {
+                    "name": name,
+                    "size": output_size,
+                    "path": pkginfo_fname,
+                    "version": pkginfo.get("version", ""),
+                    "minimum_os_version": pkginfo.get("minimum_os_version", ""),
+                    "maximum_os_version": pkginfo.get("maximum_os_version", "")}
+                out_of_date_items.append(item)
+
+        return sorted(out_of_date_items,
+                    key=lambda x: (x["name"], LooseVersion(x["version"])))
+
+
+class PathIssuesReport(Report):
+    name = "Pkginfos with Case-Sensitive Pkg Path Errors"
+    items_order = ["name", "path"]
+
+    def run_report(self, repo_data):
+        pkgs = os.path.join(repo_data["munki_repo"], "pkgs")
+        for pkginfo, data in repo_data["pkgsinfo"].items():
+            installer = data.get("installer_item_location")
+            if installer:
+                bad_dirs = self.get_bad_path(installer, pkgs)
+                if bad_dirs:
+                    result = {"name": data.get("name"),
+                              "path": pkginfo,
+                              "bad_path_component": bad_dirs}
+                    self.items.append(result)
+
+    def get_bad_path(self, installer, path):
+        if "/" in installer:
+            subdir = installer.split("/")[0]
+            if subdir in os.listdir(path):
+                return self.get_bad_path(installer.split("/", 1)[1],
+                                         os.path.join(path, subdir))
+            else:
+                return subdir
+        else:
+            return installer if installer not in os.listdir(path) else None
+
+
+class MissingInstallerReport(Report):
+    name = "Pkginfos with Missing Installer Items"
+    items_order = ["name", "path"]
+
+    def run_report(self, repo_data):
+        pkgs = os.path.join(repo_data["munki_repo"], "pkgs")
+        for pkginfo, data in repo_data["pkgsinfo"].items():
+            installer = data.get("installer_item_location")
+            if installer:
+                installer_path = os.path.join(pkgs, installer)
+                if not os.path.exists(installer_path):
+                    result = {"name": data.get("name"),
+                              "path": pkginfo,
+                              "missing_installer": installer_path}
+                    self.items.append(result)
 
 def main():
     pass
