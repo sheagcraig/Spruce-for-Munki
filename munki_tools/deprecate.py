@@ -19,22 +19,20 @@
 to a deprecated repository."""
 
 
-from collections import Counter, defaultdict
-import copy
 import glob
 import os
 import shutil
 import sys
-from xml.sax.saxutils import escape
 
-import FoundationPlist
-import tools
+from munki_tools import FoundationPlist
+from munki_tools import tools
 
 
 NO_CATEGORY = "*NO CATEGORY*"
 
 
 def main():
+    """Do nothing."""
     pass
 
 
@@ -48,7 +46,7 @@ def deprecate(args):
     removal_type = "archived" if args.archive else "removed"
     print_removals(removals, removal_type)
     print_manifest_removals(names)
-    warn_about_multiple_pkg_references(removals, cache)
+    warn_about_multiple_refs(removals, cache)
 
     if not args.force:
         response = raw_input("Are you sure you want to continue? (Y|N): ")
@@ -107,10 +105,13 @@ def get_removals_for_names(names, cache):
 
 
 def get_removals_from_plist(path, cache):
+    """Get all pkginfo and pkg files to remove from a plist."""
     data = FoundationPlist.readPlist(path)
     pkg_prefix = tools.get_pkg_path()
     pkg_key = "installer_item_location"
-    pkginfo_removals = [item["path"] for item in data.get("removals")]
+    # Filter out pkginfo files that may already have been removed.
+    pkginfo_removals = [item["path"] for item in data.get("removals") if
+                        item["path"] in cache]
     pkg_removals = [
         os.path.join(pkg_prefix, cache[pkginfo][pkg_key]) for
         pkginfo in pkginfo_removals if cache[pkginfo].get(pkg_key)]
@@ -157,7 +158,7 @@ def print_manifest_removals(names):
     print
 
 
-def warn_about_multiple_pkg_references(removals, cache):
+def warn_about_multiple_refs(removals, cache):
     """Alert user about possible pkg removal dependencies."""
     # Check for pkginfo files that are NOT to be removed which reference
     # any pkgs to be removed and warn the user!
@@ -182,7 +183,6 @@ def move_to_archive(removals, archive_path):
         if item:
             archive_item = item.replace(repo_prefix, archive_path, 1)
             make_folders(os.path.dirname(archive_item))
-            # TODO: Disabled until GO TIME.
             # TODO: Need to add Git awareness.
             shutil.move(item, archive_item)
 
@@ -194,7 +194,7 @@ def make_folders(folder):
             os.makedirs(folder)
         except OSError:
             print ("Failed to create archive directory {}! "
-                    "Quitting.".format(folder))
+                   "Quitting.".format(folder))
             sys.exit(1)
 
 
@@ -263,6 +263,7 @@ def remove_names_from_manifests(names):
 
 
 def handle_name_removal(product_array, names_to_remove, key):
+    """Remove names from a manifest."""
     removals = []
     changes = False
     for item in product_array:
@@ -270,11 +271,10 @@ def handle_name_removal(product_array, names_to_remove, key):
             print "\tRemoving {} from {}".format(item, key)
             removals.append(item)
         elif (item.startswith(tuple(names_to_remove)) and not
-                item.endswith(tuple(names_to_remove))):
+              item.endswith(tuple(names_to_remove))):
             print ("\tDeprecator found item {} that may match a "
-                    "name to remove, but the length is wrong. "
-                    "Please remove manually if required!").format(
-                        item)
+                   "name to remove, but the length is wrong. "
+                   "Please remove manually if required!").format(item)
     for item in removals:
         product_array.remove(item)
         changes = True
