@@ -100,6 +100,9 @@ def get_argument_parser():
     deprecator_parser.add_argument("-c", "--category", help=phelp, nargs="+")
     phelp = "Remove all pkginfos and pkgs with name 'NAME'."
     deprecator_parser.add_argument("-n", "--name", help=phelp, nargs="+")
+    phelp = ("Remove all products in the 'removals' section of supplied "
+             "plist.")
+    deprecator_parser.add_argument("-p", "--plist", help=phelp)
 
     # icons arguments
     phelp = "Report on unused icons and optionally remove or archive them."

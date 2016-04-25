@@ -20,6 +20,7 @@ to a deprecated repository."""
 
 
 from collections import Counter, defaultdict
+import copy
 import glob
 import os
 import shutil
@@ -46,6 +47,7 @@ def deprecate(args):
 
     removal_type = "archived" if args.archive else "removed"
     print_removals(removals, removal_type)
+    print_manifest_removals(names)
     warn_about_multiple_pkg_references(removals, cache)
 
     if not args.force:
@@ -64,12 +66,13 @@ def deprecate(args):
 def get_files_to_remove(args, cache):
     """Build and return a list of files to remove."""
     removals = []
+    # TODO: Refactor
     if args.category:
         removals += get_removals_for_categories(args.category, cache)
     if args.name:
         removals += get_removals_for_names(args.name, cache)
-    # if args.plist:
-    #     removals += get_removals_from_plist(args.plist, cache)
+    if args.plist:
+        removals += get_removals_from_plist(args.plist, cache)
     return removals
 
 
@@ -104,18 +107,51 @@ def get_removals_for_names(names, cache):
 
 
 def get_removals_from_plist(path, cache):
-    pass
+    data = FoundationPlist.readPlist(path)
+    pkg_prefix = tools.get_pkg_path()
+    pkg_key = "installer_item_location"
+    pkginfo_removals = [item["path"] for item in data.get("removals")]
+    pkg_removals = [
+        os.path.join(pkg_prefix, cache[pkginfo][pkg_key]) for
+        pkginfo in pkginfo_removals if cache[pkginfo].get(pkg_key)]
+    return pkginfo_removals + pkg_removals
 
 
 def get_names_to_remove(removals, cache):
     """Return a set of all the 'name' values for pkginfos to remove."""
-    return {cache[path].get("name") for path in removals if path in cache}
+    # We only want to remove products from manifests if we are removing
+    # ALL of that product.
+
+    # Copy the pkginfo cache. You can't use copy.deepcopy on ObjC
+    # objects. So we convert to dict (which copies).
+    future_cache = dict(cache)
+    # Remove all of the planned removals.
+    for removal in removals:
+        if removal in future_cache:
+            del future_cache[removal]
+    # Make a set of all of the remaining names.
+    remaining_names = {future_cache[path].get("name") for path in future_cache}
+    # Make a set of all of the names from removals list.
+    removal_names = {cache[path].get("name") for path in removals if path in
+                     cache}
+    # The difference tells us which products we are completely removing.
+    names_to_remove = removal_names - remaining_names
+    return names_to_remove
 
 
 def print_removals(removals, removal_type):
     """Pretty print the files to remove."""
     print "Items to be {}".format(removal_type)
     for item in sorted(removals):
+        print "\t{}".format(item)
+
+    print
+
+
+def print_manifest_removals(names):
+    """Pretty print the names to remove from manifests."""
+    print "Items to be removed from manifests:"
+    for item in sorted(names):
         print "\t{}".format(item)
 
     print
@@ -143,11 +179,12 @@ def move_to_archive(removals, archive_path):
 
     repo_prefix = tools.get_repo_path()
     for item in removals:
-        archive_item = item.replace(repo_prefix, archive_path, 1)
-        make_folders(os.path.dirname(archive_item))
-        # TODO: Disabled until GO TIME.
-        # TODO: Need to add Git awareness.
-        shutil.move(item, archive_item)
+        if item:
+            archive_item = item.replace(repo_prefix, archive_path, 1)
+            make_folders(os.path.dirname(archive_item))
+            # TODO: Disabled until GO TIME.
+            # TODO: Need to add Git awareness.
+            shutil.move(item, archive_item)
 
 
 def make_folders(folder):
@@ -164,15 +201,18 @@ def make_folders(folder):
 def remove(removals):
     """Delete a list of files."""
     for item in removals:
-        try:
-            os.remove(item)
-        except OSError as error:
-            print ("Unable to remove {} with error: {}".format(
-                item, error.message))
+        if item:
+            try:
+                os.remove(item)
+            except OSError as error:
+                print ("Unable to remove {} with error: {}".format(
+                    item, error.message))
 
 
 def remove_names_from_manifests(names):
     """Remove names from all manifests."""
+    if not names:
+        return
     # Build a new cache post-removal. We haven't run makecatalogs, so
     # we can't use the catalogs for this task.
     repo_path = tools.get_repo_path()
