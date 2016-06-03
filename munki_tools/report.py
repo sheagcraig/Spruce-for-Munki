@@ -335,37 +335,46 @@ def get_used_items(manifests, pkgsinfo):
             if requires:
                 used_items.update(requires)
 
-    # Add in update_for items.
-    # This is done in a second pass as otherwise not all name-version
-    # items may be in the set.
-    all_updates = ((pkginfo.get("name"), pkginfo.get("version"),
-                    pkginfo["update_for"]) for pkginfo in pkgsinfo.values() if
-                   "update_for" in pkginfo)
-    for name, version, updates in all_updates:
-        if any(item in used_items for item in updates):
-            used_items.add(name)
-            used_items.add("{}-{}".format(name, version))
+    added_items = add_update_fors(pkgsinfo, used_items)
+    # A pkginfo that is not used could be an update_for something that
+    # is. If that update_for pkginfo is added, another pkginfo may now
+    # potentially be an update_for it, so loop until no items are added.
+    while added_items is True:
+        added_items = add_update_fors(pkgsinfo, used_items)
 
     return used_items
 
 
-# def print_output(report_results):
-#     """Print formatted reports."""
-#     for report in report_results:
-#         print "{}:".format(report)
-#         for item in report_results[report]:
-#             print "\t" + "-" * 20
-#             for key, val in item.items():
-#                 print "\t{}: {}".format(key, val)
+def add_update_fors(pkgsinfo, used_items):
+    """Add in update_for items.
 
-#         print
+    Adds name and name-version entries to used_items set. Also, looks
+    for requires entries and adds them as well.
 
+    args:
+        pkgsinfo (sequence of plists): The pkginfo cache.
+        used_items (set of strings): The used items object.
 
-# def print_output_list(report_results):
-#     for report in sorted(report_results):
-#         print report
-#         print_info(report_results[report])
-#         print
+    returns (bool): Whether any items were added.
+    """
+    result = False
+    all_updates = ((pkginfo.get("name"), pkginfo.get("version"),
+                    pkginfo["update_for"], pkginfo.get("requires")) for pkginfo
+                   in pkgsinfo.values() if "update_for" in pkginfo)
+    for name, version, updates, requires in all_updates:
+        if any(item in used_items for item in updates):
+            name_version = "{}-{}".format(name, version)
+            if name not in used_items or name_version not in used_items:
+                result = True
+                used_items.add(name)
+                used_items.add(name_version)
+
+            if requires:
+                if any(item not in used_items for item in requires):
+                    used_items.update(requires)
+                    result = True
+
+    return result
 
 
 def get_info(all_plist, conditions, cache):
@@ -393,14 +402,6 @@ def is_unattended_install(pkginfo):
 
 def is_not_unattended_install(pkginfo):
     return pkginfo.get("unattended_install", False) == False
-
-
-# def print_info(info):
-#     for item in info:
-#         print "\t" + ", ".join(item).encode("utf-8")
-#         # print str(item[0]).encode("utf-8")
-#         # for attribute in item[1:]:
-#         #     print "\t{}".format(str(attribute)).encode("utf-8")
 
 
 def find_pkginfo_file_in_repo(pkginfo, pkginfos):
