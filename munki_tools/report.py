@@ -86,11 +86,21 @@ class Report(object):
 class OutOfDateReport(Report):
     name = "Out of Date Items in Production"
     items_order = ["name", "path"]
-    # TODO: This doesn't account for OS version differences (and
+    # This doesn't account for OS version differences (and
     # possibly others) that can result in a false positive for being
     # "out-of-date"
-    # Need to consider the highest version number for each OS version as
-    # "current"
+
+    # To implement determining the current version of an item for each
+    # possible OS range, across both the pkginfo min/max OS version and
+    # installs min/max os version, and taking into account open-ended
+    # acceptable OS values, is a major undertaking. Therefore, the
+    # pkginfo min/max OS versions are supplied in the report, and the
+    # results should be used keeping in mind the potential need for
+    # outdated OS support.
+
+    # Furthermore, an item may be "out of date", but is specified by
+    # another current item as a requirement. Again, it is up to the
+    # user to decide what to do with this information.
 
     def run_report(self, repo_data):
         manifests = repo_data["manifests"]
