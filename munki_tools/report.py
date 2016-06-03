@@ -94,9 +94,8 @@ class OutOfDateReport(Report):
 
     def run_report(self, repo_data):
         manifests = repo_data["manifests"]
-        used_items = get_used_items(manifests, repo_data["pkgsinfo"])
         self.items = self.get_out_of_date_info(
-            repo_data["pkgsinfo"], used_items)
+            repo_data["pkgsinfo"], repo_data["used_items"])
         # self.metadata = self.get_metadata()
 
     def get_out_of_date_info(self, pkgsinfo, used_items):
@@ -174,9 +173,8 @@ class NoUsageReport(Report):
     items_order = ["name", "path"]
 
     def run_report(self, repo_data):
-        used_items = get_used_items(repo_data["manifests"],
-                                    repo_data["pkgsinfo"])
-        self.get_unused_items_info(repo_data["pkgsinfo"], used_items)
+        self.get_unused_items_info(repo_data["pkgsinfo"],
+                                   repo_data["used_items"])
 
     def get_unused_items_info(self, cache, used_items):
         unused_items = []
@@ -264,6 +262,8 @@ def run_reports(args):
     expanded_cache["pkgsinfo"] = cache
     expanded_cache["manifests"] = get_manifests(munki_repo)
     expanded_cache["munki_repo"] = munki_repo
+    expanded_cache["used_items"] = get_used_items(expanded_cache["manifests"],
+                                                  expanded_cache["pkgsinfo"])
 
     report_results.append(PathIssuesReport(expanded_cache))
     report_results.append(MissingInstallerReport(expanded_cache))
