@@ -103,19 +103,20 @@ class OutOfDateReport(Report):
         out_of_date_items = []
         for pkginfo_fname, pkginfo in pkgsinfo.items():
             name = pkginfo.get("name")
-            if (name in used_items and
-                not pkginfo.get("installer_type") == "apple_update_metadata" and
-                in_production(pkginfo)):
+            if (name in used_items and not pkginfo.get("installer_type") ==
+                "apple_update_metadata" and in_production(pkginfo)):
                 size = pkginfo.get("installer_item_size", 0)
-                output_size = ("{:,.2f}M".format(float(size) / 1024) if size else
-                            "")
+                output_size = ("{:,.2f}M".format(float(size) / 1024) if size
+                               else "")
                 item = {
                     "name": name,
                     "size": output_size,
                     "path": pkginfo_fname,
                     "version": pkginfo.get("version", ""),
-                    "minimum_os_version": pkginfo.get("minimum_os_version", ""),
-                    "maximum_os_version": pkginfo.get("maximum_os_version", "")}
+                    "minimum_os_version":
+                        pkginfo.get("minimum_os_version", ""),
+                    "maximum_os_version":
+                        pkginfo.get("maximum_os_version", "")}
                 out_of_date_items.append(item)
 
         return sorted(out_of_date_items,
@@ -322,40 +323,49 @@ def get_used_items(manifests, pkgsinfo):
                 if items:
                     used_items.update(items)
 
+    # If `name` is used, then `name-version` is implicitly used as well.
     for pkginfo in pkgsinfo.values():
         name = pkginfo.get("name")
-        update_for = pkginfo.get("update_for")
-        if update_for:
-            # TODO: Need to handle name-version construction too.
-            if any(item in used_items for item in update_for):
-                used_items.add(name)
-
-        # TODO: Also try name + version
+        version = pkginfo.get("version")
         if name in used_items:
+            used_items.add("{}-{}".format(name, version))
+
+        if name in used_items or "{}-{}".format(name, version) in used_items:
             requires = pkginfo.get("requires")
             if requires:
                 used_items.update(requires)
 
+    # Add in update_for items.
+    # This is done in a second pass as otherwise not all name-version
+    # items may be in the set.
+    all_updates = ((pkginfo.get("name"), pkginfo.get("version"),
+                    pkginfo["update_for"]) for pkginfo in pkgsinfo.values() if
+                   "update_for" in pkginfo)
+    for name, version, updates in all_updates:
+        if any(item in used_items for item in updates):
+            used_items.add(name)
+            used_items.add("{}-{}".format(name, version))
+
     return used_items
 
 
-def print_output(report_results):
-    """Print formatted reports."""
-    for report in report_results:
-        print "{}:".format(report)
-        for item in report_results[report]:
-            print "\t" + "-" * 20
-            for key, val in item.items():
-                print "\t{}: {}".format(key, val)
+# def print_output(report_results):
+#     """Print formatted reports."""
+#     for report in report_results:
+#         print "{}:".format(report)
+#         for item in report_results[report]:
+#             print "\t" + "-" * 20
+#             for key, val in item.items():
+#                 print "\t{}: {}".format(key, val)
 
-        print
+#         print
 
 
-def print_output_list(report_results):
-    for report in sorted(report_results):
-        print report
-        print_info(report_results[report])
-        print
+# def print_output_list(report_results):
+#     for report in sorted(report_results):
+#         print report
+#         print_info(report_results[report])
+#         print
 
 
 def get_info(all_plist, conditions, cache):
@@ -385,12 +395,12 @@ def is_not_unattended_install(pkginfo):
     return pkginfo.get("unattended_install", False) == False
 
 
-def print_info(info):
-    for item in info:
-        print "\t" + ", ".join(item).encode("utf-8")
-        # print str(item[0]).encode("utf-8")
-        # for attribute in item[1:]:
-        #     print "\t{}".format(str(attribute)).encode("utf-8")
+# def print_info(info):
+#     for item in info:
+#         print "\t" + ", ".join(item).encode("utf-8")
+#         # print str(item[0]).encode("utf-8")
+#         # for attribute in item[1:]:
+#         #     print "\t{}".format(str(attribute)).encode("utf-8")
 
 
 def find_pkginfo_file_in_repo(pkginfo, pkginfos):
