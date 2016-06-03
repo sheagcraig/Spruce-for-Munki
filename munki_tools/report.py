@@ -94,7 +94,7 @@ class OutOfDateReport(Report):
 
     def run_report(self, repo_data):
         manifests = repo_data["manifests"]
-        used_items = get_used_items(manifests)
+        used_items = get_used_items(manifests, repo_data["pkgsinfo"])
         self.items = self.get_out_of_date_info(
             repo_data["pkgsinfo"], used_items)
         # self.metadata = self.get_metadata()
@@ -119,7 +119,7 @@ class OutOfDateReport(Report):
                 out_of_date_items.append(item)
 
         return sorted(out_of_date_items,
-                    key=lambda x: (x["name"], LooseVersion(x["version"])))
+                      key=lambda x: (x["name"], LooseVersion(x["version"])))
 
 
 class PathIssuesReport(Report):
@@ -168,26 +168,39 @@ class MissingInstallerReport(Report):
 
 
 class NoUsageReport(Report):
-    name = "Items Not in Any Manifests"
+    name = ("Items Not in Any Manifests or requires, and are not update_for "
+            "used items.")
     items_order = ["name", "path"]
 
     def run_report(self, repo_data):
-        used_items = get_used_items(repo_data["manifests"])
+        used_items = get_used_items(repo_data["manifests"],
+                                    repo_data["pkgsinfo"])
         self.get_unused_items_info(repo_data["pkgsinfo"], used_items)
 
     def get_unused_items_info(self, cache, used_items):
         unused_items = []
         for pkginfo_fname, pkginfo in cache.items():
-            if (pkginfo.get("name") not in used_items and
-                    not pkginfo.get("installer_type") == "apple_update_metadata"):
+            if (self.not_used(pkginfo, used_items) and not
+                    pkginfo.get("installer_type") == "apple_update_metadata"):
                 size = pkginfo.get("installer_item_size", 0)
-                output_size = ("{:,.2f}M".format(float(size) / 1024) if size else
-                            "")
+                output_size = ("{:,.2f}M".format(float(size) / 1024) if size
+                               else "")
                 self.items.append(
                     {"name": pkginfo.get("name", ""),
                     "version": pkginfo.get("version", ""),
                     "path": pkginfo_fname,
                     "size": output_size})
+
+    def not_used(self, pkginfo, used_items):
+        """Return whether a pkginfo is not specified in used set.
+
+        Tests for whether the name AND the name-version construction
+        are in the set of used_items.
+        """
+        name = pkginfo.get("name")
+        version = pkginfo.get("version")
+        return (name not in used_items and "{}-{}".format(name, version)
+                not in used_items)
 
 
 class PkgsinfoWithErrorsReport(Report):
@@ -214,7 +227,6 @@ class UnusedDiskUsageReport(Report):
         self.metadata.append(
             {"Unused files account for": "{:,.2f} gigabytes".format(
                 unused_size / (1024 ** 2))})
-
 
 
 def run_reports(args):
@@ -282,7 +294,19 @@ def get_manifests(munki_repo):
     return manifests
 
 
-def get_used_items(manifests):
+def get_used_items(manifests, pkgsinfo):
+    """Determine all used items.
+
+    First, gets the names of all managed_[un]install, optional_install,
+    and managed_update items, including in conditional sections.
+
+    Then looks through those items' pkginfos for 'requires' entries, and
+    adds them to the list.
+
+    Finally, it looks through all pkginfos looking for 'update_for'
+    items in the used list; if found, that pkginfo's 'name' is added
+    to the list.
+    """
     collections = ("managed_installs", "managed_uninstalls",
                    "optional_installs", "managed_updates")
     used_items = set()
@@ -297,36 +321,22 @@ def get_used_items(manifests):
                 items = conditional.get(collection)
                 if items:
                     used_items.update(items)
-    return used_items
 
-
-def get_out_of_date(cache, munki_repo):
-    manifests = get_manifests(munki_repo)
-    used_items = get_used_items(manifests)
-    return get_out_of_date_info(cache, used_items)
-
-
-def get_out_of_date_info(cache, used_items):
-    out_of_date_items = []
-    for pkginfo_fname, pkginfo in cache.items():
+    for pkginfo in pkgsinfo.values():
         name = pkginfo.get("name")
-        if (name in used_items and
-            not pkginfo.get("installer_type") == "apple_update_metadata" and
-            in_production(pkginfo)):
-            size = pkginfo.get("installer_item_size", 0)
-            output_size = ("{:,.2f}M".format(float(size) / 1024) if size else
-                           "")
-            item = {
-                "name": name,
-                "size": output_size,
-                "path": pkginfo_fname,
-                "version": pkginfo.get("version", ""),
-                "minimum_os_version": pkginfo.get("minimum_os_version", ""),
-                "maximum_os_version": pkginfo.get("maximum_os_version", "")}
-            out_of_date_items.append(item)
+        update_for = pkginfo.get("update_for")
+        if update_for:
+            # TODO: Need to handle name-version construction too.
+            if any(item in used_items for item in update_for):
+                used_items.add(name)
 
-    return sorted(out_of_date_items,
-                  key=lambda x: (x["name"], LooseVersion(x["version"])))
+        # TODO: Also try name + version
+        if name in used_items:
+            requires = pkginfo.get("requires")
+            if requires:
+                used_items.update(requires)
+
+    return used_items
 
 
 def print_output(report_results):
