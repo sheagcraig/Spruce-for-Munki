@@ -168,8 +168,8 @@ class MissingInstallerReport(Report):
 
 
 class NoUsageReport(Report):
-    name = ("Items Not in Any Manifests or requires, and are not update_for "
-            "used items.")
+    name = ("Items That are not in any Manifests and Have no 'requires' or "
+            "'update_for' Dependencies to Used Items.")
     items_order = ["name", "path"]
 
     def run_report(self, repo_data):
@@ -388,8 +388,8 @@ def get_info(all_plist, conditions, cache):
 def in_testing(pkginfo):
     testing_catalogs = ("development", "testing", "phase1", "phase2",
                         "phase3")
-    return any([catalog in pkginfo.get("catalogs") for catalog in
-                testing_catalogs])
+    return any(catalog.lower() in testing_catalogs for catalog in
+               pkginfo.get("catalogs", []))
 
 
 def in_production(pkginfo):
