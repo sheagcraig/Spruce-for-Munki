@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from collections import OrderedDict
+from collections import defaultdict, OrderedDict
 from distutils.version import LooseVersion
 import os
 import plistlib
@@ -99,7 +99,7 @@ class OutOfDateReport(Report):
         # self.metadata = self.get_metadata()
 
     def get_out_of_date_info(self, pkgsinfo, used_items):
-        out_of_date_items = []
+        candidates = []
         for pkginfo_fname, pkginfo in pkgsinfo.items():
             name = pkginfo.get("name")
             if (name in used_items and not pkginfo.get("installer_type") ==
@@ -116,10 +116,29 @@ class OutOfDateReport(Report):
                         pkginfo.get("minimum_os_version", ""),
                     "maximum_os_version":
                         pkginfo.get("maximum_os_version", "")}
-                out_of_date_items.append(item)
+                candidates.append(item)
+
+        out_of_date_items = self.remove_current_versions(candidates)
 
         return sorted(out_of_date_items,
                       key=lambda x: (x["name"], LooseVersion(x["version"])))
+
+    def remove_current_versions(self, candidates):
+        names = {item["name"] for item in candidates}
+        collated_candidates = defaultdict(list)
+        for item in candidates:
+            collated_candidates[item["name"]].append(
+                LooseVersion(item["version"]))
+
+        for versions in collated_candidates.values():
+            versions.sort()
+
+        for item in candidates:
+            if (LooseVersion(item["version"]) ==
+                    collated_candidates[item["name"]][-1]):
+                candidates.remove(item)
+
+        return candidates
 
 
 class PathIssuesReport(Report):
