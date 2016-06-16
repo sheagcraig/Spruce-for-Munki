@@ -119,6 +119,16 @@ def get_argument_parser():
     phelp = "Don't prompt before removal or archiving procedure."
     icon_parser.add_argument("-f", "--force", help=phelp, action="store_true")
 
+    # docs arguments
+    phelp = "Generate markdown documentation from configured Munki repo."
+    doc_parser = subparser.add_parser("docs", help=phelp)
+    doc_parser.set_defaults(func=munki_tools.handle_docs)
+
+    phelp = ("Directory to save output to.")
+    doc_parser.add_argument("outputdir", help=phelp)
+    phelp = ("Generate HTML output.")
+    doc_parser.add_argument("--html", help=phelp, action="store_true")
+
     return parser
 
 

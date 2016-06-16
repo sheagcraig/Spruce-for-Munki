@@ -313,6 +313,8 @@ def run_reports(args):
 
 
 def get_manifests(munki_repo):
+    # TODO: Add handling similar to pkgsinfo for errors. Add errors
+    # to report.
     manifest_dir = os.path.join(munki_repo, "manifests")
     manifests = {}
     for dirpath, _, filenames in os.walk(manifest_dir):
