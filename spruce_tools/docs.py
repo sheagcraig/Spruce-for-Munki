@@ -18,8 +18,10 @@
 """Module to build helpful markdown docs from a Munki repo."""
 
 
+import codecs
 from collections import defaultdict
 from distutils.version import LooseVersion
+import os
 
 try:
     import markdown
@@ -52,7 +54,18 @@ def handle_docs(args):
         rows[name] = row
     for row_name in sorted(rows):
         output += rows[row_name]
-    print output.encode("utf-8")
+
+    extension = "html" if args.html else "md"
+    if args.html:
+        extensions = ["markdown.extensions.tables"]
+        output = markdown.markdown(
+            output, extensions=extensions, output_format="html5")
+
+    with codecs.open(
+        os.path.join(args.outputdir, "items.{}".format(extension)),
+        encoding="utf-8", mode="w") as ofile:
+                # ofile.write(output.encode("utf-8"))
+                ofile.write(output)
 
 
 def get_item_info(pkgsinfo):
