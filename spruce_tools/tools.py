@@ -122,3 +122,22 @@ def build_pkginfo_cache_with_errors(repo):
 
 def is_pkginfo(candidate):
     return os.path.splitext(candidate)[-1].lower() in PKGINFO_EXTENSIONS
+
+
+def in_testing(pkginfo):
+    testing_catalogs = ("development", "testing", "phase1", "phase2",
+                        "phase3")
+    return any(catalog.lower() in testing_catalogs for catalog in
+               pkginfo.get("catalogs", []))
+
+
+def in_production(pkginfo):
+    return not in_testing(pkginfo)
+
+
+def is_unattended_install(pkginfo):
+    return pkginfo.get("unattended_install") == True
+
+
+def is_not_unattended_install(pkginfo):
+    return pkginfo.get("unattended_install", False) == False

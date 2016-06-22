@@ -114,7 +114,7 @@ class OutOfDateReport(Report):
         for pkginfo_fname, pkginfo in pkgsinfo.items():
             name = pkginfo.get("name")
             if (name in used_items and not pkginfo.get("installer_type") ==
-                "apple_update_metadata" and in_production(pkginfo)):
+                "apple_update_metadata" and tools.in_production(pkginfo)):
                 size = pkginfo.get("installer_item_size", 0)
                 output_size = ("{:,.2f}M".format(float(size) / 1024) if size
                                else "")
@@ -258,6 +258,45 @@ class UnusedDiskUsageReport(Report):
                 unused_size / (1024 ** 2))})
 
 
+class SimpleConditionReport(Report):
+    """Report Subclass for simple reports."""
+
+    def run_report(self, repo_data):
+        self.items = self.get_info(self.conditions, repo_data["pkgsinfo"])
+
+    def get_info(self, conditions, cache):
+        output = []
+        for path, pkginfo in cache.items():
+            if all(condition(pkginfo) for condition in conditions):
+                item = {"name": pkginfo["name"],
+                        "version": pkginfo["version"],
+                        "path": path}
+                output.append(item)
+        return sorted(output)
+
+
+class UnattendedTestingReport(SimpleConditionReport):
+    name = "Unattended Installs in Testing Catalogs"
+    conditions = (tools.in_testing, tools.is_unattended_install)
+
+
+class UnattendedProdReport(SimpleConditionReport):
+    name = "Items Lacking Unattended in Production Catalog"
+    conditions = (tools.in_production, tools.is_not_unattended_install)
+
+
+class ForceInstallTestingReport(SimpleConditionReport):
+    name = "force_install_after_date not set for Testing Items"
+    conditions = (tools.in_testing,
+                  lambda x: x.get("force_install_after_date") is None)
+
+
+class ForceInstallProdReport(SimpleConditionReport):
+    name = "force_install_after_date set for Production Items"
+    conditions = (tools.in_production,
+                  lambda x: x.get("force_install_after_date") is not None)
+
+
 def run_reports(args):
     munkiimport = FoundationPlist.readPlist(os.path.expanduser(
         "~/Library/Preferences/com.googlecode.munki.munkiimport.plist"))
@@ -266,26 +305,7 @@ def run_reports(args):
     all_plist = FoundationPlist.readPlist(all_path)
     cache, errors = tools.build_pkginfo_cache_with_errors(munki_repo)
 
-    # TODO: Finish classing up reports.
     # TODO: Add sorting to output or reporting.
-    # TODO: Need to figure out how to handle domain-specific reports.
-    # reports = (("Unattended Installs for Testing Pkgsinfo:",
-    #             (in_testing, is_unattended_install)),
-    #            ("Production Pkgsinfo lacking unattended",
-    #             (in_production, is_not_unattended_install)),
-    #            ("force_install set for Production",
-    #             (in_production,
-    #              lambda x: x.get("force_install_after_date") is not None)),
-    #            ("force_install not set for Testing",
-    #             (in_testing,
-    #              lambda x: x.get("force_install_after_date") is None)),
-    #            ("Restart Action Configured",
-    #             (lambda x: x.get("RestartAction") is not None,))
-    #            )
-    # results = {report[0]: get_info(all_plist, report[1], cache) for report in
-    #            reports}
-    # report_results = OrderedDict(results)
-    # report_results = OrderedDict()
     report_results = []
 
     expanded_cache = {}
@@ -303,6 +323,10 @@ def run_reports(args):
     expanded_cache["unused_items"] = [item for report in report_results[-2:]
                                       for item in report.items]
     report_results.append(UnusedDiskUsageReport(expanded_cache))
+    report_results.append(UnattendedTestingReport(expanded_cache))
+    report_results.append(UnattendedProdReport(expanded_cache))
+    report_results.append(ForceInstallTestingReport(expanded_cache))
+    report_results.append(ForceInstallProdReport(expanded_cache))
 
     if args.plist:
         dict_reports = {report.name: report.as_dict() for report in
@@ -407,60 +431,6 @@ def add_update_fors(pkgsinfo, used_items):
                     result = True
 
     return result
-
-
-def get_info(all_plist, conditions, cache):
-    return sorted([{"name": pkginfo["name"],
-                    "version": pkginfo["version"],
-                    "path": find_pkginfo_file_in_repo(pkginfo, cache)}
-                   for pkginfo in all_plist if
-                   all([condition(pkginfo) for condition in conditions])])
-
-
-def in_testing(pkginfo):
-    testing_catalogs = ("development", "testing", "phase1", "phase2",
-                        "phase3")
-    return any(catalog.lower() in testing_catalogs for catalog in
-               pkginfo.get("catalogs", []))
-
-
-def in_production(pkginfo):
-    return not in_testing(pkginfo)
-
-
-def is_unattended_install(pkginfo):
-    return pkginfo.get("unattended_install") == True
-
-
-def is_not_unattended_install(pkginfo):
-    return pkginfo.get("unattended_install", False) == False
-
-
-def find_pkginfo_file_in_repo(pkginfo, pkginfos):
-    """Find the pkginfo file that matches the input in the repo."""
-    cmp_keys = ("name", "version", "installer_item_location")
-    name = pkginfo["name"]
-    version = pkginfo["version"]
-    installer = pkginfo.get("installer_item_location")
-    candidate_keys = (key for key in pkginfos if name in key and version in
-                      key)
-
-    for candidate_key in candidate_keys:
-        pkginfo_file = pkginfos[candidate_key]
-        if all(pkginfo.get(key) == pkginfo_file.get(key) for key in cmp_keys):
-            return candidate_key
-
-    # Brute force if we haven't found one yet.
-    for pkg_key in pkginfos:
-        pkginfo_file = pkginfos[pkg_key]
-        if all(pkginfo.get(key) == pkginfo_file.get(key) for key in cmp_keys):
-            return pkg_key
-
-    return None
-
-
-def is_pkginfo(candidate):
-    return os.path.splitext(candidate)[-1].lower() in PKGINFO_EXTENSIONS
 
 
 if __name__ == "__main__":
