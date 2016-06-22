@@ -34,14 +34,10 @@ except ImportError:
 import tools
 
 
-class Markdown(object):
-    pass
-
-
 def handle_docs(args):
+    # TODO: See @homebysix for awesome mockups of future docs.
     repo = tools.get_repo_path()
     pkgsinfo = tools.build_pkginfo_cache(repo)
-    # all_catalog = tools.get_all_catalog()
     output = "# Items in Munki Repo\n"
     output += "| Name | Display Name | Versions Present | Notes |\n"
     output += "| ---- | ------------ | ---------------- | ----- |\n"
@@ -57,10 +53,14 @@ def handle_docs(args):
 
     extension = "html" if args.html else "md"
     if args.html:
+        # TODO: This is not a complete html page-create a template to add
+        # the markdown output to as the body.
         extensions = ["markdown.extensions.tables"]
         output = markdown.markdown(
             output, extensions=extensions, output_format="html5")
 
+    # TODO: There needs to be testing for whether the output dir exists,
+    # possibly making it if necessary.
     with codecs.open(
         os.path.join(args.outputdir, "items.{}".format(extension)),
         encoding="utf-8", mode="w") as ofile:
