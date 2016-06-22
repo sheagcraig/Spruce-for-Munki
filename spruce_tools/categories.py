@@ -25,8 +25,8 @@ from collections import Counter, defaultdict
 import os
 from xml.sax.saxutils import escape
 
-from munki_tools import FoundationPlist
-import munki_tools as tools
+from spruce_tools import FoundationPlist
+import spruce_tools as tools
 
 
 NO_CATEGORY = "*NO CATEGORY*"
@@ -105,7 +105,7 @@ def update_categories(args):
     """Update product pkginfo files to reflect specified categories."""
     changes = FoundationPlist.readPlist(os.path.expanduser(args.plist))
 
-    # Remove the comment that we instert into the output of prepare.
+    # Remove the comment that we insert into the output of prepare.
     if "Comment" in changes:
         del changes["Comment"]
 

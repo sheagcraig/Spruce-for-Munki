@@ -20,8 +20,7 @@ from collections import defaultdict
 import csv
 import os
 
-import munki_tools as tools
-from munki_tools import FoundationPlist
+import spruce_tools as tools
 
 
 def run_names(args):

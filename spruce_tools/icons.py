@@ -26,7 +26,6 @@ import shutil
 import sys
 from xml.sax.saxutils import escape
 
-import FoundationPlist
 import tools
 
 

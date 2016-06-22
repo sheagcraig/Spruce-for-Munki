@@ -24,8 +24,8 @@ import os
 import shutil
 import sys
 
-from munki_tools import FoundationPlist
-from munki_tools import tools
+from spruce_tools import FoundationPlist
+from spruce_tools import tools
 
 
 NO_CATEGORY = "*NO CATEGORY*"

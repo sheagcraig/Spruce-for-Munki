@@ -90,3 +90,6 @@ Other planned features:
   my org for our testing cycle. I will blog about this, and include
   information about what they mean at a later date.
 - Documentation!
+- Move verb: Allows you to simultaneously move a pkginfo and its pkg to a new folder in the repo. (HINT: This is basically deprecate, minus the manifest manipulations).
+- Search verb: Look through pkgsinfo, pkgs, manifests, icons, etc, for search term and provide formatted results.
+- Report for items which share a `name`, but have differing `category`, `developer`, etc values.
