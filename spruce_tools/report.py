@@ -21,6 +21,7 @@ import os
 import plistlib
 from xml.parsers.expat import ExpatError
 
+import cruftmoji
 import tools
 import FoundationPlist
 
@@ -56,7 +57,7 @@ class Report(object):
         pass
 
     def print_report(self):
-        print "{}:".format(self.name)
+        print "{0} {1}{0} :".format(cruftmoji.SPRUCE, self.name)
         if self.items or self.metadata:
             self._print_section("items")
             print
