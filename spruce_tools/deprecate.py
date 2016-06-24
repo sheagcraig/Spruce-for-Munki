@@ -39,6 +39,9 @@ def main():
 
 def deprecate(args):
     """Handle arguments and execute commands."""
+    if args.git and call(["which", "git"]) == 1:
+        sys.exit("ERROR: git not found in path.")
+
     cache = tools.build_pkginfo_cache(tools.get_repo_path())
 
     removals = get_files_to_remove(args, cache)
@@ -60,10 +63,7 @@ def deprecate(args):
         remove(removals)
 
     if args.git:
-        if call(["which", "git"]) == 0:
-            git_rm(removals)
-        else:
-            print "ERROR: git not found in path."
+        git_rm(removals)
 
     remove_names_from_manifests(names)
 
