@@ -94,6 +94,8 @@ def get_argument_parser():
     dep_parser.add_argument("-a", "--archive", help=phelp)
     phelp = "Don't prompt before removal or archiving procedure."
     dep_parser.add_argument("-f", "--force", help=phelp, action="store_true")
+    phelp = "Use 'git rm' when deleting, or after archiving, to stage changes."
+    dep_parser.add_argument("-g", "--git", help=phelp, action="store_true")
 
     deprecator_parser = dep_parser.add_argument_group("Deprecation Arguments")
     phelp = "Remove all pkginfos and pkgs with category 'CATEGORY'."

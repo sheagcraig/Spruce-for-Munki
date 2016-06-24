@@ -22,6 +22,7 @@ to a deprecated repository."""
 import glob
 import os
 import shutil
+from subprocess import call, check_call, CalledProcessError
 import sys
 
 from spruce_tools import FoundationPlist
@@ -57,6 +58,12 @@ def deprecate(args):
         move_to_archive(removals, args.archive)
     else:
         remove(removals)
+
+    if args.git:
+        if call(["which", "git"]) == 0:
+            git_rm(removals)
+        else:
+            print "ERROR: git not found in path."
 
     remove_names_from_manifests(names)
 
@@ -183,7 +190,9 @@ def move_to_archive(removals, archive_path):
         if item:
             archive_item = item.replace(repo_prefix, archive_path, 1)
             make_folders(os.path.dirname(archive_item))
-            # TODO: Need to add Git awareness.
+            # TODO: Exception handling. Should bail if there are
+            # failures. If --git, then things could get deleted rather
+            # than moved.
             shutil.move(item, archive_item)
 
 
@@ -207,6 +216,16 @@ def remove(removals):
             except OSError as error:
                 print ("Unable to remove {} with error: {}".format(
                     item, error.message))
+
+
+def git_rm(removals):
+    """Use git to stage deletions."""
+    for removal in removals:
+        try:
+            check_call(["git", "rm", removal])
+        except CalledProcessError as error:
+            print "git rm failed for {} with: {}".format(
+                removal, error.message)
 
 
 def remove_names_from_manifests(names):
