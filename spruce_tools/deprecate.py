@@ -22,7 +22,7 @@ to a deprecated repository."""
 import glob
 import os
 import shutil
-from subprocess import call, check_call, CalledProcessError
+from subprocess import call, Popen, CalledProcessError, PIPE
 import sys
 
 from spruce_tools import FoundationPlist
@@ -210,22 +210,30 @@ def make_folders(folder):
 def remove(removals):
     """Delete a list of files."""
     for item in removals:
-        if item:
+        if item and os.path.isfile(item):
             try:
                 os.remove(item)
             except OSError as error:
                 print ("Unable to remove {} with error: {}".format(
                     item, error.message))
+        else:
+            print "Skipping '{}' as it does not seem to exist.".format(item)
 
 
 def git_rm(removals):
     """Use git to stage deletions."""
     for removal in removals:
-        try:
-            check_call(["git", "rm", removal])
-        except CalledProcessError as error:
-            print "git rm failed for {} with: {}".format(
-                removal, error.message)
+        proc = Popen(["git", "-C", tools.get_repo_path(),
+                      "rm", removal], stdout=PIPE, stderr=PIPE)
+        stdout, stderr = proc.communicate()
+
+        if proc.returncode != 0:
+            if "did not match any files" in stderr:
+                print ("File '{}' is not under version control. "
+                       "Skipping.".format(removal))
+            else:
+                print "git rm failed for {} with error: {}".format(
+                    removal, stderr)
 
 
 def remove_names_from_manifests(names):
@@ -246,6 +254,8 @@ def remove_names_from_manifests(names):
     keys = ("managed_installs", "optional_installs", "managed_updates",
             "managed_uninstalls")
 
+
+    # TODO: This does not handle subdirectories.
     for manifest_path in glob.glob(os.path.join(manifests_path, "*")):
         changed = False
         try:
