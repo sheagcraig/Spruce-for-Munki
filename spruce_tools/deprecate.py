@@ -45,6 +45,9 @@ def deprecate(args):
     cache = tools.build_pkginfo_cache(tools.get_repo_path())
 
     removals = get_files_to_remove(args, cache)
+    if not removals:
+        sys.exit("Nothing to do! Exiting.")
+
     names = get_names_to_remove(removals, cache)
 
     removal_type = "archived" if args.archive else "removed"
