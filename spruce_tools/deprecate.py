@@ -113,7 +113,11 @@ def get_removals_for_names(names, cache):
 
 def get_removals_from_plist(path, cache):
     """Get all pkginfo and pkg files to remove from a plist."""
-    data = FoundationPlist.readPlist(path)
+    try:
+        data = FoundationPlist.readPlist(path)
+    except FoundationPlist.NSPropertyListSerializationException:
+        sys.exit("Invalid plist file provided as an argument. Exiting.")
+
     pkg_prefix = tools.get_pkg_path()
     pkg_key = "installer_item_location"
     # Filter out pkginfo files that may already have been removed.
@@ -258,6 +262,8 @@ def remove_names_from_manifests(names):
 
 
 def get_manifests(directory):
+    # TODO: This should probably be a generator! Large repos with client
+    # certificates will be completely loaded into memory!
     manifests = {}
     for dirpath, _, filenames in os.walk(directory):
         for filename in filenames:
