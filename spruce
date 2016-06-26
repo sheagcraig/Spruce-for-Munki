@@ -23,14 +23,18 @@ by product, category, etc.
 
 
 import argparse
+import sys
 
 import spruce_tools
 
 
 def main():
     """Handle arguments and execute commands."""
-    args = get_argument_parser().parse_args()
-    args.func(args)
+    try:
+        args = get_argument_parser().parse_args()
+        args.func(args)
+    except KeyboardInterrupt:
+        sys.exit(1)
 
 
 def get_argument_parser():
