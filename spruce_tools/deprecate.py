@@ -240,10 +240,11 @@ def remove_names_from_manifests(names):
     """Remove names from all manifests."""
     if not names:
         return
+
     # Build a new cache post-removal. We haven't run makecatalogs, so
     # we can't use the catalogs for this task.
     repo_path = tools.get_repo_path()
-    manifests_path = os.path.join(repo_path, "manifests")
+    manifests_root = os.path.join(repo_path, "manifests")
 
     cache = tools.build_pkginfo_cache(repo_path)
     remaining_names = {pkginfo.get("name") for pkginfo in cache.values()}
@@ -251,62 +252,78 @@ def remove_names_from_manifests(names):
     # repo from our removals set.
     names_to_remove = names - remaining_names
 
-    keys = ("managed_installs", "optional_installs", "managed_updates",
+    manifests = get_manifests(manifests_root)
+    for manifest_path, manifest in manifests.items():
+        remove_names_from_manifest(manifest_path, manifest, names_to_remove)
+
+
+def get_manifests(directory):
+    manifests = {}
+    for dirpath, _, filenames in os.walk(directory):
+        for filename in filenames:
+            path = os.path.join(dirpath, filename)
+            try:
+                manifest = FoundationPlist.readPlist(path)
+            except FoundationPlist.FoundationPlistException:
+                print "Error reading manifest {}".format(path)
+                continue
+            manifests[path] = manifest
+
+    return manifests
+
+
+def remove_names_from_manifest(manifest_path, manifest, removals):
+    keys = ("managed_installs",
+            "optional_installs",
+            "managed_updates",
             "managed_uninstalls")
+    sections = {key: manifest[key] for key in keys if key in manifest}
+    if "conditional_items" in manifest:
+        sections.update(
+            {"conditional_items/{}/{}".format(
+                condition["condition"], key): condition[key]
+             for condition in manifest["conditional_items"]
+             for key in keys if key in condition})
+
+    changed = False
+
+    for section, array in sections.items():
+        changes = handle_name_removal(array, removals)
+        if changes:
+            changed = True
+            for change in changes:
+                print ("\tRemoved '{}' from section '{}' of manifest"
+                       "'{}'").format(change, section, manifest_path)
+
+    if changed:
+        FoundationPlist.writePlist(manifest, manifest_path)
 
 
-    # TODO: This does not handle subdirectories.
-    for manifest_path in glob.glob(os.path.join(manifests_path, "*")):
-        changed = False
-        try:
-            manifest = FoundationPlist.readPlist(manifest_path)
-        except FoundationPlist.FoundationPlistException:
-            print "Error reading manifest {}".format(manifest_path)
-            continue
-        print "Looking for name removals in {}".format(manifest_path)
+def handle_name_removal(array, names_to_remove):
+    """Remove names from a manifest.
 
-        for key in keys:
-            product_array = manifest.get(key)
-            if product_array:
-                changes = handle_name_removal(product_array, names_to_remove,
-                                              key)
-                if changes:
-                    changed = True
+    Args:
+        array (list): The actual manifest array of names.
+        names_to_remove (list of str): Names of items to remove if
+        found.
 
-        # TODO: This can be refactored out as it's a duplicate, just
-        # one layer deeper in the manifest.
-        if "conditional_items" in manifest:
-            conditionals = manifest["conditional_items"]
-            for conditional in conditionals:
-                for key in keys:
-                    product_array = conditional.get(key)
-                    if product_array:
-                        changes = handle_name_removal(
-                            product_array, names_to_remove,
-                            "conditional " + key)
-                        if changes:
-                            changed = True
-
-        if changed:
-            FoundationPlist.writePlist(manifest, manifest_path)
-
-
-def handle_name_removal(product_array, names_to_remove, key):
-    """Remove names from a manifest."""
+    Returns:
+        List of removed names.
+    """
     removals = []
-    changes = False
-    for item in product_array:
+    changes = []
+
+    for item in array:
         if item in names_to_remove:
-            print "\tRemoving {} from {}".format(item, key)
             removals.append(item)
         elif (item.startswith(tuple(names_to_remove)) and not
               item.endswith(tuple(names_to_remove))):
-            print ("\tDeprecator found item {} that may match a "
-                   "name to remove, but the length is wrong. "
-                   "Please remove manually if required!").format(item)
+            print ("\tDeprecator found item '{}' from section '{}' that may "
+                   "match a name to remove, but the length is wrong. "
+                   "Please remove manually if required!").format(item, section)
     for item in removals:
-        product_array.remove(item)
-        changes = True
+        array.remove(item)
+        changes.append(item)
 
     return changes
 
