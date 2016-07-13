@@ -20,6 +20,7 @@ from distutils.version import LooseVersion
 import os
 import plistlib
 from xml.parsers.expat import ExpatError
+import sys
 
 import cruftmoji
 import tools
@@ -302,7 +303,10 @@ def run_reports(args):
         "~/Library/Preferences/com.googlecode.munki.munkiimport.plist"))
     munki_repo = munkiimport.get("repo_path")
     all_path = os.path.join(munki_repo, "catalogs", "all")
-    all_plist = FoundationPlist.readPlist(all_path)
+    try:
+        all_plist = FoundationPlist.readPlist(all_path)
+    except FoundationPlist.NSPropertyListSerializationException:
+        sys.exit("Please mount your Munki repo and try again.")
     cache, errors = tools.build_pkginfo_cache_with_errors(munki_repo)
 
     # TODO: Add sorting to output or reporting.
@@ -347,7 +351,7 @@ def get_manifests(munki_repo):
             if filename not in IGNORED_FILES:
                 manifest_filename = os.path.join(dirpath, filename)
                 manifests[manifest_filename] = FoundationPlist.readPlist(
-                    manifest_filename)
+                        manifest_filename)
     return manifests
 
 
