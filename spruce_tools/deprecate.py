@@ -124,8 +124,12 @@ def get_removals_from_plist(path, cache):
     pkg_prefix = tools.get_pkg_path()
     pkg_key = "installer_item_location"
     # Filter out pkginfo files that may already have been removed.
-    pkginfo_removals = [item["path"] for item in data.get("removals") if
+    pkginfo_removals = [item["path"] for item in data.get("removals", []) if
                         item["path"] in cache]
+    # TODO: Let's set this thing up to be able to remove ANYTHING from
+    # the repo. So we need to add icons, just pkgs without an accompanying
+    # pkginfo, client_resources, files that are just sitting in any of those
+    # places, etc.
     pkg_removals = [
         os.path.join(pkg_prefix, cache[pkginfo][pkg_key]) for
         pkginfo in pkginfo_removals if cache[pkginfo].get(pkg_key)]
