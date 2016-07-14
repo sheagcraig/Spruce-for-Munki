@@ -84,8 +84,11 @@ Obviously this is a powerful and dangerous tool. You've been warned!
 - Report options, allowing you to run a subset of all reports. 
 - Documentation!
 - Move verb: Allows you to simultaneously move a pkginfo and its pkg to a new folder in the repo. (HINT: This is basically deprecate, minus the manifest manipulations).
+- As part of move/deprecate implementation, also handle arbitrary random crap in the repo, as well as icons, client_resources, just pkgs (without a reference from a pkginfo).
 - Search verb: Look through pkgsinfo, pkgs, manifests, icons, etc, for search term and provide formatted results.
 - Report for items which share a `name`, but have differing `category`, `developer`, etc values.
+- Report for unused client_resources.
+- Report for "misplaced" crap in your repo. (i.e. some random txt file in your pkgs).
 - Circular dependency report.
 - Cruftiness ranks for reports.
 - Git-aware deprecate features (git rm for pkginfo, git rm for pkgs, individually configurable).
