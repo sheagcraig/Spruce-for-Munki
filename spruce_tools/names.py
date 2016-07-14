@@ -17,6 +17,7 @@
 
 import argparse
 from collections import defaultdict
+from distutils.version import LooseVersion
 import csv
 import os
 
@@ -48,7 +49,7 @@ def get_argument_parser():
 def get_names_and_versions(all_plist):
     names = defaultdict(list)
     for pkginfo in all_plist:
-        names[pkginfo["name"]].append(pkginfo["version"])
+        names[pkginfo["name"]].append(LooseVersion(pkginfo["version"]))
 
     return names
 
@@ -57,7 +58,7 @@ def print_report(report):
     if isinstance(report, dict):
         for name, versions in sorted(report.items()):
             print name
-            for version in versions:
-                print "\t" + version
+            for version in sorted(versions):
+                print "\t" + str(version)
     else:
         print "\n".join(sorted(report))
