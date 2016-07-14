@@ -198,6 +198,42 @@ class MissingInstallerReport(Report):
                     self.items.append(result)
 
 
+class OrphanedInstallerReport(Report):
+    name = "Pkgs with no Referring Pkginfo"
+    items_order = ["path"]
+
+    def run_report(self, repo_data):
+        search_key = "installer_item_location"
+        # TODO: join full path
+        used_packages = {pkginfo[search_key] for pkginfo in
+                         repo_data["pkgsinfo"].values() if search_key in
+                         pkginfo}
+        pkgs_dir = os.path.join(repo_data["munki_repo"], "pkgs")
+        bundle_packages = set()
+        for dirpath, _, filenames in os.walk(pkgs_dir):
+            if any(bundle_pkg in dirpath for bundle_pkg in bundle_packages):
+                # Contents of a bundle.
+                continue
+            elif os.path.splitext(dirpath)[1].upper() in (".PKG", ".MPKG"):
+                # This is a non-flat package. Check for the dirname only,
+                # then move on to the next iteration.
+                if dirpath not in used_packages:
+                    self.items.append({"path": dirpath})
+                    bundle_packages.add(dirpath)
+                continue
+            rel_path = dirpath.split(pkgs_dir)[1]
+            for filename in filenames:
+                # Slice off preceding slash.
+                rel_filename = os.path.join(rel_path, filename)
+                rel_filename = (rel_filename[1:] if
+                                rel_filename.startswith("/") else rel_filename)
+                if rel_filename not in used_packages:
+                    item_path = os.path.join(dirpath, filename)
+                    # result = {"name": item_path, "path": item_path}
+                    result = {"path": item_path}
+                    self.items.append(result)
+
+
 class NoUsageReport(Report):
     name = ("Items That are not in any Manifests and Have no 'requires' or "
             "'update_for' Dependencies to Used Items.")

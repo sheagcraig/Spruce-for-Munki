@@ -126,6 +126,10 @@ def get_removals_from_plist(path, cache):
     # Filter out pkginfo files that may already have been removed.
     pkginfo_removals = [item["path"] for item in data.get("removals", []) if
                         item["path"] in cache]
+    # TODO: Temporary "erase anything" code. Use a set in the future to remove
+    # dupes.
+    file_removals = [item["path"] for item in data.get("removals", []) if
+                     item["path"] not in cache]
     # TODO: Let's set this thing up to be able to remove ANYTHING from
     # the repo. So we need to add icons, just pkgs without an accompanying
     # pkginfo, client_resources, files that are just sitting in any of those
@@ -133,7 +137,7 @@ def get_removals_from_plist(path, cache):
     pkg_removals = [
         os.path.join(pkg_prefix, cache[pkginfo][pkg_key]) for
         pkginfo in pkginfo_removals if cache[pkginfo].get(pkg_key)]
-    return pkginfo_removals + pkg_removals
+    return pkginfo_removals + pkg_removals + file_removals
 
 
 def get_names_to_remove(removals, cache):
@@ -204,7 +208,12 @@ def move_to_archive(removals, archive_path):
             # TODO: Exception handling. Should bail if there are
             # failures. If --git, then things could get deleted rather
             # than moved.
-            shutil.move(item, archive_item)
+            try:
+                shutil.move(item, archive_item)
+                print "Archived '{}'.".format(item)
+            except (IOError, OSError) as err:
+                print "Failed to remove item '{}' with error '{}'.".format(
+                    item, err.strerror)
 
 
 def make_folders(folder):
@@ -220,10 +229,17 @@ def make_folders(folder):
 
 def remove(removals):
     """Delete a list of files."""
+    # TODO: Add exception handling and progress output from archive func.
     for item in removals:
         if item and os.path.isfile(item):
             try:
                 os.remove(item)
+            except OSError as error:
+                print ("Unable to remove {} with error: {}".format(
+                    item, error.message))
+        elif item and os.path.isdir(item):
+            try:
+                shutil.rmtree(item)
             except OSError as error:
                 print ("Unable to remove {} with error: {}".format(
                     item, error.message))
@@ -235,7 +251,7 @@ def git_rm(removals):
     """Use git to stage deletions."""
     for removal in removals:
         proc = Popen(["git", "-C", tools.get_repo_path(),
-                      "rm", removal], stdout=PIPE, stderr=PIPE)
+                      "rm", "-r", removal], stdout=PIPE, stderr=PIPE)
         stdout, stderr = proc.communicate()
 
         if proc.returncode != 0:
