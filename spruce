@@ -48,6 +48,8 @@ def get_argument_parser():
     phelp = (
         "Output all unique product names present in the Munki all catalog.")
     names_parser = subparser.add_parser("name", help=phelp)
+    phelp = "Search for items with names that contain this argument."
+    names_parser.add_argument("name", help=phelp, nargs="?")
     names_parser.set_defaults(func=spruce_tools.run_names)
     phelp = "Show each version of the software per name."
     names_parser.add_argument("-v", "--version", help=phelp,

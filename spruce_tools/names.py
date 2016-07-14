@@ -31,7 +31,7 @@ def run_names(args):
     else:
         report = tools.get_unique_names(all_plist)
 
-    print_report(report)
+    print_report(report, args.name)
 
 
 def get_argument_parser():
@@ -54,11 +54,15 @@ def get_names_and_versions(all_plist):
     return names
 
 
-def print_report(report):
+def print_report(report, filter):
     if isinstance(report, dict):
+        if filter:
+            report = {key: val for key, val in report.items() if filter.upper()
+                      in key.upper()}
         for name, versions in sorted(report.items()):
             print name
             for version in sorted(versions):
                 print "\t" + str(version)
     else:
-        print "\n".join(sorted(report))
+        print "\n".join(sorted(item for item in report if filter.upper() in
+                               item.upper()))
