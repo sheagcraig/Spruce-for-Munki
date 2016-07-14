@@ -136,7 +136,6 @@ class OutOfDateReport(Report):
                       key=lambda x: (x["name"], LooseVersion(x["version"])))
 
     def remove_current_versions(self, candidates):
-        names = {item["name"] for item in candidates}
         collated_candidates = defaultdict(list)
         for item in candidates:
             collated_candidates[item["name"]].append(
@@ -145,10 +144,13 @@ class OutOfDateReport(Report):
         for versions in collated_candidates.values():
             versions.sort()
 
+        to_remove_candidates = []
         for item in candidates:
             if (LooseVersion(item["version"]) ==
                     collated_candidates[item["name"]][-1]):
-                candidates.remove(item)
+                to_remove_candidates.append(item)
+        for candidate in to_remove_candidates:
+            candidates.remove(candidate)
 
         return candidates
 
