@@ -292,7 +292,7 @@ class PkgsinfoWithErrorsReport(Report):
 
 
 class UnusedDiskUsageReport(Report):
-    name = "Unused Item Disk Usage"
+    name = "Unused / Out Of Date Item Disk Usage"
 
     def run_report(self, cache):
         unused_size = 0.0
@@ -359,6 +359,8 @@ def run_reports(args):
     report_results.append(PkgsinfoWithErrorsReport(errors))
     report_results.append(OutOfDateReport(expanded_cache))
     report_results.append(NoUsageReport(expanded_cache))
+    # Add the results of the last two reports together to determine
+    # wasted disk space.
     expanded_cache["unused_items"] = [item for report in report_results[-2:]
                                       for item in report.items]
     report_results.append(UnusedDiskUsageReport(expanded_cache))
