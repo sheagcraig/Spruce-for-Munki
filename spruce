@@ -37,6 +37,7 @@ def main():
         args = get_argument_parser().parse_args()
         args.func(args)
     except KeyboardInterrupt:
+        print
         sys.exit(1)
 
 
