@@ -33,6 +33,64 @@ from spruce_tools import tools
 NO_CATEGORY = "*NO CATEGORY*"
 
 
+class Removal(object):
+    """Describes an item to remove and related metadata."""
+
+    def __init__(self, items=None):
+        self.paths = []
+        if items:
+            self.paths += items
+
+        self._name = ""
+        self.min_version = "Unknown Min. OS Version"
+        self.max_version = "Unknown Max. OS Version"
+        self.version = ""
+        self._size = None
+
+    @property
+    def name(self):
+        if self._name:
+            return self._name
+        elif self.paths:
+            return os.path.splitext(os.path.basename(self.paths[0]))[0]
+
+    @name.setter
+    def name(self, name):
+        self._name = name
+
+    @property
+    def size(self):
+        if self._size:
+            return self._size
+        elif self.paths:
+            try:
+                return os.stat(self.paths[0])[6]
+            except OSError:
+                return 0
+
+    @size.setter
+    def size(self, size):
+        self._size = int(size)
+
+    def __str__(self):
+        head_fmt = "{} {} ({} - {}): {}\n\t"
+
+        if self.size >= (1024 ** 2):
+            size = "{:,.2f}G".format(self.size / (1024.0 ** 2))
+        elif self.size < (1024 ** 2) and self.size >= 1024:
+            size = "{:,.2f}M".format(self.size / 1024.0)
+        elif self.size < 1024:
+            size = "{}K".format(self.size)
+
+        output = head_fmt.format(self.name, self.version, self.min_version,
+                                 self.max_version, size)
+        output += "\n\t".join(self.paths)
+
+        return output
+
+
+
+
 def main():
     """Do nothing."""
     pass
