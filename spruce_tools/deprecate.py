@@ -26,6 +26,7 @@ from subprocess import call, Popen, CalledProcessError, PIPE
 import sys
 
 from spruce_tools import FoundationPlist
+from spruce_tools import report
 from spruce_tools import tools
 
 
@@ -75,6 +76,12 @@ def get_files_to_remove(args, cache):
     """Build and return a list of files to remove."""
     removals = []
     # TODO: Refactor
+    if args.auto:
+        try:
+            levels = int(args.auto)
+        except ValueError:
+            sys.exit("Please provide an integer value for the --auto option.")
+        removals += get_removals_from_auto(levels, cache)
     if args.category:
         removals += get_removals_for_categories(args.category, cache)
     if args.name:
@@ -82,6 +89,21 @@ def get_files_to_remove(args, cache):
     if args.plist:
         removals += get_removals_from_plist(args.plist, cache)
     return removals
+
+
+def get_removals_from_auto(level, cache):
+    pkg_prefix = tools.get_pkg_path()
+    pkg_key = "installer_item_location"
+    expanded_cache, _ = report.build_expanded_cache()
+
+    out_of_date = report.OutOfDateReport(expanded_cache, level)
+
+    pkginfo_removals = [pkginfo["path"] for pkginfo in out_of_date.items]
+    pkg_removals = [
+        os.path.join(pkg_prefix, cache[pkginfo][pkg_key]) for
+        pkginfo in pkginfo_removals if cache[pkginfo].get(pkg_key)]
+
+    return pkginfo_removals + pkg_removals
 
 
 def get_removals_for_categories(categories, cache):

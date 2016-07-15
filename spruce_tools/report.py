@@ -104,6 +104,12 @@ class OutOfDateReport(Report):
     # another current item as a requirement. Again, it is up to the
     # user to decide what to do with this information.
 
+    def __init__(self, repo_data, num_to_save=1):
+        self.items = []
+        self.metadata = []
+        self.num_to_save = num_to_save
+        self.run_report(repo_data)
+
     def run_report(self, repo_data):
         manifests = repo_data["manifests"]
         self.items = self.get_out_of_date_info(
@@ -146,9 +152,14 @@ class OutOfDateReport(Report):
 
         to_remove_candidates = []
         for item in candidates:
-            if (LooseVersion(item["version"]) ==
-                    collated_candidates[item["name"]][-1]):
+            if self.num_to_save > len(collated_candidates[item["name"]]):
                 to_remove_candidates.append(item)
+            elif (LooseVersion(item["version"]) in collated_candidates[item["name"]][- self.num_to_save:]):
+                to_remove_candidates.append(item)
+
+            # if (LooseVersion(item["version"]) ==
+            #         collated_candidates[item["name"]][-1]):
+            #     to_remove_candidates.append(item)
         for candidate in to_remove_candidates:
             candidates.remove(candidate)
 
@@ -337,28 +348,14 @@ class ForceInstallProdReport(SimpleConditionReport):
 
 
 def run_reports(args):
-    munkiimport = FoundationPlist.readPlist(os.path.expanduser(
-        "~/Library/Preferences/com.googlecode.munki.munkiimport.plist"))
-    munki_repo = munkiimport.get("repo_path")
-    all_path = os.path.join(munki_repo, "catalogs", "all")
-    try:
-        all_plist = FoundationPlist.readPlist(all_path)
-    except FoundationPlist.NSPropertyListSerializationException:
-        sys.exit("Please mount your Munki repo and try again.")
-    cache, errors = tools.build_pkginfo_cache_with_errors(munki_repo)
+    expanded_cache, errors = build_expanded_cache()
 
     # TODO: Add sorting to output or reporting.
     report_results = []
 
-    expanded_cache = {}
-    expanded_cache["pkgsinfo"] = cache
-    expanded_cache["manifests"] = get_manifests(munki_repo)
-    expanded_cache["munki_repo"] = munki_repo
-    expanded_cache["used_items"] = get_used_items(expanded_cache["manifests"],
-                                                  expanded_cache["pkgsinfo"])
-
     report_results.append(PathIssuesReport(expanded_cache))
     report_results.append(MissingInstallerReport(expanded_cache))
+    report_results.append(OrphanedInstallerReport(expanded_cache))
     report_results.append(PkgsinfoWithErrorsReport(errors))
     report_results.append(OutOfDateReport(expanded_cache))
     report_results.append(NoUsageReport(expanded_cache))
@@ -377,6 +374,27 @@ def run_reports(args):
     else:
         for report in report_results:
             report.print_report()
+
+
+def build_expanded_cache():
+    munkiimport = FoundationPlist.readPlist(os.path.expanduser(
+        "~/Library/Preferences/com.googlecode.munki.munkiimport.plist"))
+    munki_repo = munkiimport.get("repo_path")
+    all_path = os.path.join(munki_repo, "catalogs", "all")
+    try:
+        all_plist = FoundationPlist.readPlist(all_path)
+    except FoundationPlist.NSPropertyListSerializationException:
+        sys.exit("Please mount your Munki repo and try again.")
+    cache, errors = tools.build_pkginfo_cache_with_errors(munki_repo)
+
+    expanded_cache = {}
+    expanded_cache["pkgsinfo"] = cache
+    expanded_cache["manifests"] = get_manifests(munki_repo)
+    expanded_cache["munki_repo"] = munki_repo
+    expanded_cache["used_items"] = get_used_items(expanded_cache["manifests"],
+                                                  expanded_cache["pkgsinfo"])
+
+    return (expanded_cache, errors)
 
 
 def get_manifests(munki_repo):
