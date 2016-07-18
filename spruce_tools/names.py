@@ -54,15 +54,18 @@ def get_names_and_versions(all_plist):
     return names
 
 
-def print_report(report, filter):
+def print_report(report, search):
     if isinstance(report, dict):
-        if filter:
-            report = {key: val for key, val in report.items() if filter.upper()
-                      in key.upper()}
+        if search:
+            search = search.upper()
+            report = {key: val for key, val in report.items() if
+                      search in key.upper()}
         for name, versions in sorted(report.items()):
             print name
             for version in sorted(versions):
                 print "\t" + str(version)
     else:
-        print "\n".join(sorted(item for item in report if filter.upper() in
-                               item.upper()))
+        if search:
+            search = search.upper()
+            report = (item for item in report if search in item.upper())
+        print "\n".join(sorted(item for item in report))
