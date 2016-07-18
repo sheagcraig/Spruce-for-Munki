@@ -28,6 +28,9 @@ import sys
 import spruce_tools
 
 
+__version__ = "0.2.0"
+
+
 def main():
     """Handle arguments and execute commands."""
     try:
