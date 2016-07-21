@@ -318,12 +318,16 @@ class Report(object):
 
     Attributes:
         name: String name for report.
+        items_key: Iterable of Tuples specifying output sorting.
+            key (str): Key to sort by.
+            reverse (bool): Whether to reverse sort.
         items_order: A list of item key names defining their print output
             order.
         metadata_order: A list of metadata key names defining their print
             output order.
     """
     name = "Report"
+    items_keys = None
     items_order = []
     metadata_order = []
     separator = "-" * 20
@@ -342,6 +346,10 @@ class Report(object):
     def print_report(self):
         print "{0} {1}{0} :".format(cruftmoji.SPRUCE, self.name)
         if self.items or self.metadata:
+            if self.items_keys:
+                for key, reverse in reversed(self.items_keys):
+                    import pdb; pdb.set_trace()
+                    self.items.sort(key=itemgetter(key), reverse=reverse)
             self._print_section("items")
             print
             self._print_section("metadata")
@@ -369,6 +377,7 @@ class Report(object):
 
 class OutOfDateReport(Report):
     name = "Out of Date Items in Production"
+    items_keys = (("name", False), ("version", True))
     items_order = ["name", "path"]
 
     def __init__(self, repo_data, num_to_save=1):
