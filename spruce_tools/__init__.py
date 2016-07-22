@@ -11,4 +11,5 @@ from docs import handle_docs
 from icons import handle_icons
 from names import run_names
 from report import run_reports
+from robo_print import robo_print, LogLevel
 from tools import *
