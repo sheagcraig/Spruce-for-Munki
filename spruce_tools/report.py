@@ -339,12 +339,10 @@ def build_expanded_cache():
 
     expanded_cache = {}
     expanded_cache["pkgsinfo"] = cache
-    expanded_cache["manifests"] = get_manifests(munki_repo)
     expanded_cache["munki_repo"] = munki_repo
-    expanded_cache["manifest_items"] = get_explicitly_used_items(
-        expanded_cache["manifests"])
-    repo_data = Repo(expanded_cache["pkgsinfo"])
-    expanded_cache["repo_data"] = repo_data
+    expanded_cache["manifest_items"] = get_manifest_items(
+        get_manifests(munki_repo))
+    expanded_cache["repo_data"] = Repo(expanded_cache["pkgsinfo"])
 
     return (expanded_cache, errors)
 
@@ -368,7 +366,7 @@ def get_manifests(munki_repo):
     return manifests
 
 
-def get_explicitly_used_items(manifests):
+def get_manifest_items(manifests):
     """Determine all used items.
 
     First, gets the names of all managed_[un]install, optional_install,
