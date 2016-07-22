@@ -35,6 +35,7 @@ class Repo(object):
 
     def __init__(self, pkgsinfo):
         self.applications = {}
+        self.errors = set()
         for path, pkginfo in pkgsinfo.items():
             item = ApplicationVersion(path, pkginfo)
             name = item.name
@@ -60,23 +61,24 @@ class Repo(object):
 
         return used
 
-    def get_used_items_by_os(self, name, repo, os_version, keep, used=None,
-                       catalogs=None):
+    def get_used_items_by_os(self, full_name, repo, os_version, keep,
+                             used=None, catalogs=None):
         if not used:
             used = set()
-        name, version = tools.split_name_from_version(name)
+        name, version = tools.split_name_from_version(full_name)
         if not name in repo:
-            robo_print("'{}' does not exist in repo, but is specified in a "
-                       "manifest.".format(name), LogLevel.WARNING)
+            self.errors.add(
+                "'{}' does not exist in the repo, but is specified in a "
+                "manifest.".format(full_name))
             return used
         else:
             app = repo[name]
 
         if version:
             if version not in app:
-                robo_print("'{}-{}' does not exist in repo, but is specified "
-                           "in a manifest.".format(name, version),
-                           LogLevel.WARNING)
+                self.errors.add(
+                    "'{}-{}' does not exist in the repo, but is specified in "
+                    "a manifest.".format(name, version))
                 return used
             else:
                 candidates = (app[version],)
@@ -123,8 +125,12 @@ class Repo(object):
                 return used
 
         if len(used) == 0:
-            print ("Warning: Zero items were found that fit this OS "
-                   "requirement.")
+            # TODO: Specific OS versions would be helpful, but need to
+            # handle this in a way that doesn't massively increase the
+            # number of errors.
+            self.errors.add(
+                "Zero items were found for manifest item '{}' for a "
+                "supported OS version.".format(full_name))
         return used
 
     def meets_catalog_requirements(self, item, catalogs):
