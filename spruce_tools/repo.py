@@ -54,13 +54,13 @@ class Repo(object):
             for major in xrange(9, 13):
                 for minor in xrange(0, 10):
                     test_version = "10.{}.{}".format(major, minor)
-                    used.update(self.used_by_for_os(
+                    used.update(self.get_used_items_by_os(
                         manifest_item, self, test_version, num_to_save, used,
                         catalogs))
 
         return used
 
-    def used_by_for_os(self, name, repo, os_version, keep, used=None,
+    def get_used_items_by_os(self, name, repo, os_version, keep, used=None,
                        catalogs=None):
         if not used:
             used = set()
@@ -98,21 +98,25 @@ class Repo(object):
                 else:
                     used.add(item)
                     count += 1
+
                 for required in item.requires:
                     if isinstance(required, Application):
-                        used = self.used_by_for_os(
+                        used = self.get_used_items_by_os(
                             required.name, repo, os_version, keep, used)
                     elif required in used:
                         continue
                     else:
-                        used = self.used_by_for_os(
+                        used = self.get_used_items_by_os(
                             required.name, repo, os_version, keep, used)
 
                 for update in item.updates:
-                    if update in used:
+                    if isinstance(update, Application):
+                        used = self.get_used_items_by_os(
+                            update.name, repo, os_version, keep, used)
+                    elif update in used:
                         continue
                     else:
-                        used = self.used_by_for_os(
+                        used = self.get_used_items_by_os(
                             update.name, repo, os_version, keep, used)
 
             if count == keep:
@@ -220,6 +224,7 @@ class ApplicationVersion(object):
         self.required_by = []
         self.update_for = []
         self.updates = []
+        self.errors = []
 
     def _human_readable_size(self):
         if self.size >= GIGABYTE:
@@ -257,18 +262,19 @@ class ApplicationVersion(object):
     def add_dependencies(self, repo):
         for required_name in self.pkginfo.get("requires", []):
             name, version = tools.split_name_from_version(required_name)
-            # Item requires a specific version.
             if name not in repo:
-                robo_print("'{}' requires '{}', but there is not an item with "
-                           "that name.".format(self.name, name),
-                           LogLevel.WARNING)
+                self.errors.append(
+                    "'{}-{}' requires '{}', but there is not an item with that "
+                    "name in the repo.".format(self.name, self.version, name))
                 continue
 
+            # Item requires a specific version.
             if version:
                 if version not in repo[name]:
-                    robo_print("'{}' requires '{}-{}', but there is not an "
-                               "item with that version.".format(
-                                   self.name, name, version), LogLevel.WARNING)
+                    self.errors.append(
+                        "'{}-{}' requires '{}-{}', but there is not an item "
+                        "with that version.".format(
+                            self.name, self.version, name, version))
                     continue
                 else:
                     self.requires.append(repo[name][version])
@@ -281,17 +287,18 @@ class ApplicationVersion(object):
         for update_for_name in self.pkginfo.get("update_for", []):
             name, version = tools.split_name_from_version(update_for_name)
             if name not in repo:
-                robo_print("'{}' is an update for '{}', but that item does "
-                           "not exist.".format(self.name, name),
-                           LogLevel.WARNING)
+                self.errors.append(
+                    "'{}-{}' is an update for '{}', but that item does not "
+                    "exist.".format(self.name, self.version, name))
                 continue
 
             # Update is for a specific version.
             if version:
                 if version not in repo[name]:
-                    robo_print("'{}' is an update for '{}-{}', but there is "
-                               "not an item with that version.".format(
-                                   self.name, name, version), LogLevel.WARNING)
+                    self.errors.append(
+                        "'{}-{}' is an update for '{}-{}', but there is not "
+                        "an item with that version in the repo.".format(
+                                   self.name, name, version))
                     continue
                 else:
                     repo[name][version].add_update(self)
