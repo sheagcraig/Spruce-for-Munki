@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from distutils.version import LooseVersion
 from operator import itemgetter
 import os
 import sys
@@ -22,6 +23,7 @@ import sys
 import cruftmoji
 from repo import Repo
 from robo_print import robo_print, LogLevel
+import sys
 import tools
 import FoundationPlist
 
@@ -64,7 +66,11 @@ class Report(object):
         if self.items or self.metadata:
             if self.items_keys:
                 for key, reverse in reversed(self.items_keys):
-                    self.items.sort(key=itemgetter(key), reverse=reverse)
+                    if key == "version":
+                        self.items.sort(key=lambda v: LooseVersion(v[key]),
+                                        reverse=reverse)
+                    else:
+                        self.items.sort(key=itemgetter(key), reverse=reverse)
             self._print_section("items")
             print
             self._print_section("metadata")
@@ -102,17 +108,19 @@ class OutOfDateReport(Report):
         self.run_report(repo_data)
 
     def run_report(self, repo_data):
-        all_applications = set(version for app in
-                               repo_data["repo_data"].applications.values() for
-                               version in app)
+        # all_applications = set(version for app in
+        #                        repo_data["repo_data"].applications.values() for
+        #                        version in app)
         used_items  = repo_data["repo_data"].get_used_items(
-            repo_data["manifest_items"], self.num_to_save, ("production"))
-        unused = all_applications - used_items
-        for item in unused:
+            repo_data["manifest_items"], sys.maxint, ("production",))
+        current_items = repo_data["repo_data"].get_used_items(
+            repo_data["manifest_items"], self.num_to_save, ("production",))
+        out_of_date = used_items - current_items
+        for item in out_of_date:
             self.items.append(
                 {"name": item.name,
                 "version": item.version,
-                "path": item.pkg_path,
+                "path": item.pkginfo_path,
                 "size": item._human_readable_size()})
 
 
@@ -215,10 +223,11 @@ class NoUsageReport(Report):
             repo_data["manifest_items"], num_to_keep)
         unused = all_applications - used_items
         for item in unused:
+            # TODO: Temporary attempt at stopping plist exception
             self.items.append(
                 {"name": item.name,
                 "version": item.version,
-                "path": item.pkg_path,
+                "path": item.pkg_path or "",
                 "size": item._human_readable_size()})
 
 
