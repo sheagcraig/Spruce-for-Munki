@@ -47,7 +47,7 @@ def deprecate(args):
     cache = tools.build_pkginfo_cache(tools.get_repo_path())
     repo = Repo(cache)
 
-    removals = get_files_to_remove(args, cache)
+    removals = get_files_to_remove(args, repo)
     if not removals:
         sys.exit("Nothing to do! Exiting.")
 
@@ -56,7 +56,7 @@ def deprecate(args):
     removal_type = "archived" if args.archive else "removed"
     print_removals(removals, removal_type)
     print_manifest_removals(names)
-    warn_about_multiple_refs(removals, cache)
+    warn_about_multiple_refs(removals, repo)
 
     if not args.force:
         response = raw_input("Are you sure you want to continue? (Y|N): ")
@@ -76,7 +76,7 @@ def deprecate(args):
 
 def get_files_to_remove(args, repo):
     """Build and return a list of files to remove."""
-    removals = []
+    removals = set()
     # TODO: Refactor
     if args.auto:
         try:
@@ -85,11 +85,11 @@ def get_files_to_remove(args, repo):
             sys.exit("Please provide an integer value for the --auto option.")
         return get_removals_from_auto(levels, repo)
     if args.category:
-        removals += get_removals_for_categories(args.category, repo)
+        removals.update(get_removals_for_categories(args.category, repo))
     if args.name:
-        removals += get_removals_for_names(args.name, repo)
+        removals.update(get_removals_for_names(args.name, repo))
     if args.plist:
-        removals += get_removals_from_plist(args.plist, repo)
+        removals.update(get_removals_from_plist(args.plist, repo))
     return removals
 
 
@@ -111,8 +111,8 @@ def get_removals_from_auto(level, repo):
 
 def get_removals_for_categories(categories, repo):
     """Get all pkginfo and pkg files to remove by category."""
-    removals = [item for app in repo for item in repo[app] if
-                item.pkginfo.get("category") in categories]
+    removals = {item for app in repo for item in repo[app] if
+                item.pkginfo.get("category") in categories}
     return removals
 
 
@@ -167,13 +167,14 @@ def get_names_to_remove(removals, cache):
     future_cache = dict(cache)
     # Remove all of the planned removals.
     for removal in removals:
-        if removal in future_cache:
-            del future_cache[removal]
+        if removal.pkginfo_path in future_cache:
+            del future_cache[removal.pkginfo_path]
     # Make a set of all of the remaining names.
     remaining_names = {future_cache[path].get("name") for path in future_cache}
     # Make a set of all of the names from removals list.
-    removal_names = {cache[path].get("name") for path in removals if path in
-                     cache}
+    # removal_names = {cache[item].get("name") for removal in removals for item in removal.paths if item in
+    #                  cache}
+    removal_names = {removal.name for removal in removals}
     # The difference tells us which products we are completely removing.
     names_to_remove = removal_names - remaining_names
     return names_to_remove
@@ -203,17 +204,28 @@ def print_manifest_removals(names):
     print
 
 
-def warn_about_multiple_refs(removals, cache):
+def warn_about_multiple_refs(removals, repo):
     """Alert user about possible pkg removal dependencies."""
     # Check for pkginfo files that are NOT to be removed which reference
     # any pkgs to be removed and warn the user!
-    for path, plist in cache.items():
-        if (not path in removals and
-                plist.get("installer_item_location") in removals):
-            print ("WARNING: Package '{}' is targeted for removal, but has "
+    # for path, plist in cache.items():
+    #     if (not path in removals and
+    #             plist.get("installer_item_location") in removals):
+    #         print ("WARNING: Package '{}' is targeted for removal, but has "
+    #                "references in pkginfo '{}' which is not targeted for "
+    #                "removal.".format(
+    #                    plist.get("intaller_item_location"), path))
+    pkg_removals = {item.pkg_path for item in removals if item.pkg_path}
+    for app in repo:
+        for item in repo[app]:
+            if (item not in removals and
+                    item.pkginfo.get("installer_item_location") in
+                    pkg_removals):
+                print ("WARNING: Package '{}' is targeted for removal, but has "
                    "references in pkginfo '{}' which is not targeted for "
                    "removal.".format(
-                       plist.get("intaller_item_location"), path))
+                       item.pkginfo.get("installer_item_location"), item.pkginfo_path))
+
 
 
 def move_to_archive(removals, archive_path):
