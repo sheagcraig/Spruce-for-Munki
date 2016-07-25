@@ -52,10 +52,10 @@ class Repo(object):
         for manifest_item in manifest_items:
             # TODO: Add parameter for os version support.
             # Support 10.9-10.12
-            for major in xrange(9, 13):
+            for major in xrange(8, 13):
                 for minor in xrange(0, 10):
                     test_version = "10.{}.{}".format(major, minor)
-                    used.update(self.get_used_items_by_os(
+                    used = (self.get_used_items_by_os(
                         manifest_item, self, test_version, num_to_save, used,
                         catalogs))
 
@@ -88,6 +88,7 @@ class Repo(object):
         count = 0
         test_version = LooseVersion(os_version)
 
+        # Application objects iterate in newest-to-oldest order.
         for item in candidates:
             min_version = LooseVersion(item.min_version or "10.4.0")
             max_version = LooseVersion(item.max_version or "10.12.99")
@@ -96,6 +97,9 @@ class Repo(object):
                     test_version <= max_version and
                     self.meets_catalog_requirements(item, catalogs)):
                 if item in used:
+                    count += 1
+                    if count == keep:
+                        return used
                     continue
                 else:
                     used.add(item)
@@ -121,6 +125,7 @@ class Repo(object):
                         used = self.get_used_items_by_os(
                             update.name, repo, os_version, keep, used)
 
+            assert count <= keep
             if count == keep:
                 return used
 
@@ -136,7 +141,7 @@ class Repo(object):
     def meets_catalog_requirements(self, item, catalogs):
         if catalogs:
             return any(
-                cat in catalogs for cat in item.pkginfo.get(catalogs, []))
+                cat in catalogs for cat in item.pkginfo.get("catalogs", []))
         else:
             return True
 
@@ -256,14 +261,19 @@ class ApplicationVersion(object):
         return output
 
     def __cmp__(self, other):
-        version = LooseVersion(self.version)
-        other = LooseVersion(other.version)
-        if version < other:
+        if self.name < other.name:
             return -1
-        elif version == other:
-            return 0
-        else:
+        elif self.name > other.name:
             return 1
+        else:
+            version = LooseVersion(self.version)
+            other = LooseVersion(other.version)
+            if version < other:
+                return -1
+            elif version == other:
+                return 0
+            else:
+                return 1
 
     def add_dependencies(self, repo):
         for required_name in self.pkginfo.get("requires", []):
