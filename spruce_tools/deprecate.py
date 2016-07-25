@@ -45,6 +45,7 @@ def deprecate(args):
         sys.exit("ERROR: git not found in path.")
 
     cache = tools.build_pkginfo_cache(tools.get_repo_path())
+    repo = Repo(cache)
 
     removals = get_files_to_remove(args, cache)
     if not removals:
@@ -73,7 +74,7 @@ def deprecate(args):
     remove_names_from_manifests(names)
 
 
-def get_files_to_remove(args, cache):
+def get_files_to_remove(args, repo):
     """Build and return a list of files to remove."""
     removals = []
     # TODO: Refactor
@@ -82,19 +83,17 @@ def get_files_to_remove(args, cache):
             levels = int(args.auto)
         except ValueError:
             sys.exit("Please provide an integer value for the --auto option.")
-        removals += get_removals_from_auto(levels, cache)
+        return get_removals_from_auto(levels, repo)
     if args.category:
-        removals += get_removals_for_categories(args.category, cache)
+        removals += get_removals_for_categories(args.category, repo)
     if args.name:
-        removals += get_removals_for_names(args.name, cache)
+        removals += get_removals_for_names(args.name, repo)
     if args.plist:
-        removals += get_removals_from_plist(args.plist, cache)
+        removals += get_removals_from_plist(args.plist, repo)
     return removals
 
 
-def get_removals_from_auto(level, cache):
-    repo = Repo(cache)
-
+def get_removals_from_auto(level, repo):
     munkiimport = FoundationPlist.readPlist(os.path.expanduser(
         "~/Library/Preferences/com.googlecode.munki.munkiimport.plist"))
     munki_repo = munkiimport.get("repo_path")
@@ -110,19 +109,11 @@ def get_removals_from_auto(level, cache):
     return removals
 
 
-def get_removals_for_categories(categories, cache):
+def get_removals_for_categories(categories, repo):
     """Get all pkginfo and pkg files to remove by category."""
-    pkginfo_removals = []
-    pkg_removals = []
-    pkg_prefix = tools.get_pkg_path()
-    for path, plist in cache.items():
-        if plist.get("category") in categories:
-            pkginfo_removals.append(path)
-            if plist.get("installer_item_location"):
-                pkg_removals.append(
-                    os.path.join(pkg_prefix, plist["installer_item_location"]))
-
-    return pkginfo_removals + pkg_removals
+    removals = [item for app in repo for item in repo[app] if
+                item.pkginfo.get("category") in categories]
+    return removals
 
 
 def get_removals_for_names(names, cache):

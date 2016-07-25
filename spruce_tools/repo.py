@@ -145,6 +145,11 @@ class Repo(object):
         else:
             return True
 
+    def __iter__(self):
+        """Return an iterator that goes through applications property."""
+        for app in self.applications:
+            yield app
+
     def __getitem__(self, name):
         return self.applications[name]
 
