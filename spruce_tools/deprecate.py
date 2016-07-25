@@ -26,69 +26,12 @@ from subprocess import call, Popen, CalledProcessError, PIPE
 import sys
 
 from spruce_tools import FoundationPlist
+from spruce_tools.repo import Repo
 from spruce_tools import report
 from spruce_tools import tools
 
 
 NO_CATEGORY = "*NO CATEGORY*"
-
-
-class Removal(object):
-    """Describes an item to remove and related metadata."""
-
-    def __init__(self, items=None):
-        self.paths = []
-        if items:
-            self.paths += items
-
-        self._name = ""
-        self.min_version = "Unknown Min. OS Version"
-        self.max_version = "Unknown Max. OS Version"
-        self.version = ""
-        self._size = None
-
-    @property
-    def name(self):
-        if self._name:
-            return self._name
-        elif self.paths:
-            return os.path.splitext(os.path.basename(self.paths[0]))[0]
-
-    @name.setter
-    def name(self, name):
-        self._name = name
-
-    @property
-    def size(self):
-        if self._size:
-            return self._size
-        elif self.paths:
-            try:
-                return os.stat(self.paths[0])[6]
-            except OSError:
-                return 0
-
-    @size.setter
-    def size(self, size):
-        self._size = int(size)
-
-    def __str__(self):
-        head_fmt = "{} {} ({} - {}): {}\n\t"
-
-        if self.size >= (1024 ** 2):
-            size = "{:,.2f}G".format(self.size / (1024.0 ** 2))
-        elif self.size < (1024 ** 2) and self.size >= 1024:
-            size = "{:,.2f}M".format(self.size / 1024.0)
-        elif self.size < 1024:
-            size = "{}K".format(self.size)
-
-        output = head_fmt.format(self.name, self.version, self.min_version,
-                                 self.max_version, size)
-        output += "\n\t".join(self.paths)
-
-        return output
-
-
 
 
 def main():
@@ -150,18 +93,21 @@ def get_files_to_remove(args, cache):
 
 
 def get_removals_from_auto(level, cache):
-    pkg_prefix = tools.get_pkg_path()
-    pkg_key = "installer_item_location"
-    expanded_cache, _ = report.build_expanded_cache()
+    repo = Repo(cache)
 
-    out_of_date = report.OutOfDateReport(expanded_cache, level)
+    munkiimport = FoundationPlist.readPlist(os.path.expanduser(
+        "~/Library/Preferences/com.googlecode.munki.munkiimport.plist"))
+    munki_repo = munkiimport.get("repo_path")
 
-    pkginfo_removals = [pkginfo["path"] for pkginfo in out_of_date.items]
-    pkg_removals = [
-        os.path.join(pkg_prefix, cache[pkginfo][pkg_key]) for
-        pkginfo in pkginfo_removals if cache[pkginfo].get(pkg_key)]
+    manifest_items = report.get_manifest_items(
+        report.get_manifests(munki_repo))
+    used_items = repo.get_used_items(
+        manifest_items, sys.maxint, ("production",))
+    current_items = repo.get_used_items(manifest_items, level, ("production",))
 
-    return pkginfo_removals + pkg_removals
+    removals = used_items - current_items
+
+    return removals
 
 
 def get_removals_for_categories(categories, cache):
@@ -244,9 +190,15 @@ def get_names_to_remove(removals, cache):
 
 def print_removals(removals, removal_type):
     """Pretty print the files to remove."""
+    bar = 75 * "-"
     print "Items to be {}".format(removal_type)
+    last_name = ""
     for item in sorted(removals):
-        print "\t{}".format(item)
+        if last_name != item.name:
+            print bar
+        print item
+        # print "{}\n{}".format(bar, item)
+        last_name = item.name
 
     print
 
