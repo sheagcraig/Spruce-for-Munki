@@ -243,7 +243,7 @@ class ApplicationVersion(object):
         elif self.size < GIGABYTE and self.size >= MEGABYTE:
             size = "{:,.2f}M".format(float(self.size) / MEGABYTE)
         elif self.size < MEGABYTE:
-            size = "{}K".format(self.size)
+            size = "{:,.2f}K".format(float(self.size) / KILOBYTE)
         return size
 
     def __repr__(self):
