@@ -47,6 +47,7 @@ def deprecate(args):
     cache = tools.build_pkginfo_cache(tools.get_repo_path())
     repo = Repo(cache)
 
+    # TODO: Progress MARK
     removals = get_files_to_remove(args, repo)
     if not removals:
         sys.exit("Nothing to do! Exiting.")
@@ -55,6 +56,7 @@ def deprecate(args):
 
     removal_type = "archived" if args.archive else "removed"
     print_removals(removals, removal_type)
+    import pdb; pdb.set_trace()
     print_manifest_removals(names)
     warn_about_multiple_refs(removals, repo)
 
@@ -111,24 +113,13 @@ def get_removals_from_auto(level, repo):
 
 def get_removals_for_categories(categories, repo):
     """Get all pkginfo and pkg files to remove by category."""
-    removals = {item for app in repo for item in repo[app] if
-                item.pkginfo.get("category") in categories}
-    return removals
+    return {item for app in repo for item in repo[app] if
+            item.pkginfo.get("category") in categories}
 
 
-def get_removals_for_names(names, cache):
+def get_removals_for_names(names, repo):
     """Get all pkginfo and pkg files to remove by name."""
-    pkginfo_removals = []
-    pkg_removals = []
-    pkg_prefix = tools.get_pkg_path()
-    for path, plist in cache.items():
-        if plist.get("name") in names:
-            pkginfo_removals.append(path)
-            if plist.get("installer_item_location"):
-                pkg_removals.append(
-                    os.path.join(pkg_prefix, plist["installer_item_location"]))
-
-    return pkginfo_removals + pkg_removals
+    return {item for app in repo for item in repo[app] if item.name in names}
 
 
 def get_removals_from_plist(path, cache):
