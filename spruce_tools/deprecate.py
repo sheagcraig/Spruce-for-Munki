@@ -64,7 +64,6 @@ def deprecate(args):
         if response.upper() not in ("Y", "YES"):
             sys.exit()
 
-    # TODO: Progress MARK
     if args.archive:
         move_to_archive(removals, args.archive)
     else:
@@ -250,7 +249,6 @@ def move_to_archive(removals, archive_path):
                 repo_prefix, archive_path, 1)
             make_folders(os.path.dirname(archive_item))
             try:
-                shutil.move(path, archive_item)
                 print "Archived '{}'.".format(path)
             except (IOError, OSError) as err:
                 print "Failed to remove item '{}' with error '{}'.".format(
@@ -301,18 +299,27 @@ def remove(removals):
 
 def git_rm(removals):
     """Use git to stage deletions."""
-    for removal in removals:
-        proc = Popen(["git", "-C", tools.get_repo_path(),
-                      "rm", "-r", removal], stdout=PIPE, stderr=PIPE)
-        stdout, stderr = proc.communicate()
+    for item in removals:
+        if isinstance(item, ApplicationVersion):
+            removal_paths = [item.pkginfo_path]
+            if item.pkg_path:
+                removal_paths.append(os.path.join(tools.get_pkg_path(),
+                                                  item.pkg_path))
+        else:
+            removal_paths = [item]
 
-        if proc.returncode != 0:
-            if "did not match any files" in stderr:
-                print ("File '{}' is not under version control. "
-                       "Skipping.".format(removal))
-            else:
-                print "git rm failed for {} with error: {}".format(
-                    removal, stderr)
+        for path in removal_paths:
+            proc = Popen(["git", "-C", tools.get_repo_path(),
+                            "rm", "-r", path], stdout=PIPE, stderr=PIPE)
+            stdout, stderr = proc.communicate()
+
+            if proc.returncode != 0:
+                if "did not match any files" in stderr:
+                    print ("File '{}' is not under version control. "
+                            "Skipping.".format(path))
+                else:
+                    print "git rm failed for {} with error: {}".format(
+                        path, stderr)
 
 
 def remove_names_from_manifests(names):
