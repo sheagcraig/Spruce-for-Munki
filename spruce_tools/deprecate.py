@@ -26,7 +26,7 @@ from subprocess import call, Popen, CalledProcessError, PIPE
 import sys
 
 from spruce_tools import FoundationPlist
-from spruce_tools.repo import Repo
+from spruce_tools.repo import Repo, ApplicationVersion
 from spruce_tools import report
 from spruce_tools import tools
 
@@ -47,7 +47,6 @@ def deprecate(args):
     cache = tools.build_pkginfo_cache(tools.get_repo_path())
     repo = Repo(cache)
 
-    # TODO: Progress MARK
     removals = get_files_to_remove(args, repo)
     if not removals:
         sys.exit("Nothing to do! Exiting.")
@@ -65,6 +64,7 @@ def deprecate(args):
         if response.upper() not in ("Y", "YES"):
             sys.exit()
 
+    # TODO: Progress MARK
     if args.archive:
         move_to_archive(removals, args.archive)
     else:
@@ -122,30 +122,30 @@ def get_removals_for_names(names, repo):
     return {item for app in repo for item in repo[app] if item.name in names}
 
 
-def get_removals_from_plist(path, cache):
+def get_removals_from_plist(path, repo):
     """Get all pkginfo and pkg files to remove from a plist."""
     try:
         data = FoundationPlist.readPlist(path)
     except FoundationPlist.NSPropertyListSerializationException:
         sys.exit("Invalid plist file provided as an argument. Exiting.")
 
-    pkg_prefix = tools.get_pkg_path()
-    pkg_key = "installer_item_location"
-    # Filter out pkginfo files that may already have been removed.
-    pkginfo_removals = [item["path"] for item in data.get("removals", []) if
-                        item["path"] in cache]
-    # TODO: Temporary "erase anything" code. Use a set in the future to remove
-    # dupes.
-    file_removals = [item["path"] for item in data.get("removals", []) if
-                     item["path"] not in cache]
-    # TODO: Let's set this thing up to be able to remove ANYTHING from
-    # the repo. So we need to add icons, just pkgs without an accompanying
-    # pkginfo, client_resources, files that are just sitting in any of those
-    # places, etc.
-    pkg_removals = [
-        os.path.join(pkg_prefix, cache[pkginfo][pkg_key]) for
-        pkginfo in pkginfo_removals if cache[pkginfo].get(pkg_key)]
-    return pkginfo_removals + pkg_removals + file_removals
+    plist_removals = data.get("removals", [])
+
+    pkgsinfo_prefix = tools.get_pkgsinfo_path()
+
+    removals = set()
+    for removal in plist_removals:
+        path = removal.get("path")
+        if not path:
+            continue
+        else:
+            if pkgsinfo_prefix in path:
+                removals.update(version for app in repo for version in
+                                repo[app] if version.pkginfo_path == path)
+            else:
+                removals.add(path)
+
+    return removals
 
 
 def get_names_to_remove(removals, cache):
@@ -158,14 +158,21 @@ def get_names_to_remove(removals, cache):
     future_cache = dict(cache)
     # Remove all of the planned removals.
     for removal in removals:
-        if removal.pkginfo_path in future_cache:
-            del future_cache[removal.pkginfo_path]
+        if isinstance(removal, ApplicationVersion):
+            if removal.pkginfo_path in future_cache:
+                del future_cache[removal.pkginfo_path]
+        else:
+            if removal in future_cache:
+                del future_cache[removal]
     # Make a set of all of the remaining names.
     remaining_names = {future_cache[path].get("name") for path in future_cache}
     # Make a set of all of the names from removals list.
+    removal_names = {cache[removal].get("name") for removal in removals if
+                     isinstance(removal, basestring) and removal in cache}
     # removal_names = {cache[item].get("name") for removal in removals for item in removal.paths if item in
     #                  cache}
-    removal_names = {removal.name for removal in removals}
+    removal_names.update(removal.name for removal in removals if
+                         isinstance(removal, ApplicationVersion))
     # The difference tells us which products we are completely removing.
     names_to_remove = removal_names - remaining_names
     return names_to_remove
@@ -176,12 +183,17 @@ def print_removals(removals, removal_type):
     bar = 75 * "-"
     print "Items to be {}".format(removal_type)
     last_name = ""
-    for item in sorted(removals):
+    app_versions = {item for item in removals if
+                    isinstance(item, ApplicationVersion)}
+    for item in sorted(app_versions):
         if last_name != item.name:
             print bar
-        print item
-        # print "{}\n{}".format(bar, item)
+        print "<pkginfo{}> {}".format(" + pkg" if item.pkg_path else "",
+                                      str(item))
         last_name = item.name
+    for item in sorted(removals - app_versions):
+        print bar
+        print item
 
     print
 
@@ -218,7 +230,6 @@ def warn_about_multiple_refs(removals, repo):
                        item.pkginfo.get("installer_item_location"), item.pkginfo_path))
 
 
-
 def move_to_archive(removals, archive_path):
     """Move a list of files to an archive folder."""
     pkgs_folder = os.path.join(archive_path, "pkgs")
@@ -228,14 +239,21 @@ def move_to_archive(removals, archive_path):
 
     repo_prefix = tools.get_repo_path()
     for item in removals:
-        if item:
-            archive_item = item.replace(repo_prefix, archive_path, 1)
+        if isinstance(item, ApplicationVersion):
+            removal_paths = [item.pkginfo_path]
+            if item.pkg_path:
+                removal_paths.append(os.path.join(tools.get_pkg_path(),
+                                                  item.pkg_path))
+        else:
+            removal_paths = [item]
+
+        for item in removal_paths:
+            archive_item = item.replace(
+                repo_prefix, archive_path, 1)
             make_folders(os.path.dirname(archive_item))
-            # TODO: Exception handling. Should bail if there are
-            # failures. If --git, then things could get deleted rather
-            # than moved.
             try:
-                shutil.move(item, archive_item)
+                # TODO: Test and remove
+                #shutil.move(item, archive_item)
                 print "Archived '{}'.".format(item)
             except (IOError, OSError) as err:
                 print "Failed to remove item '{}' with error '{}'.".format(
