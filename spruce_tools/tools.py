@@ -34,6 +34,11 @@ def get_pkg_path():
     return os.path.join(get_repo_path(), "pkgs")
 
 
+def get_pkgsinfo_path():
+    """Return the path to the repo's packages."""
+    return os.path.join(get_repo_path(), "pkgsinfo")
+
+
 def get_all_catalog():
     """Return the Munki 'all' catalog as a plist dict."""
     munki_repo = get_repo_path()
