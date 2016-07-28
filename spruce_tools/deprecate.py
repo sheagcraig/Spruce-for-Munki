@@ -99,7 +99,7 @@ def get_removals_from_auto(level, repo):
     munki_repo = tools.get_repo_path()
 
     manifest_items = report.get_manifest_items(
-        report.get_manifests(munki_repo))
+        tools.get_manifests())
     used_items = repo.get_used_items(
         manifest_items, sys.maxint, ("production",))
     current_items = repo.get_used_items(manifest_items, level, ("production",))
@@ -323,7 +323,6 @@ def remove_names_from_manifests(names):
     # Build a new cache post-removal. We haven't run makecatalogs, so
     # we can't use the catalogs for this task.
     repo_path = tools.get_repo_path()
-    manifests_root = os.path.join(repo_path, "manifests")
 
     cache = tools.build_pkginfo_cache(repo_path)
     remaining_names = {pkginfo.get("name") for pkginfo in cache.values()}
@@ -331,26 +330,9 @@ def remove_names_from_manifests(names):
     # repo from our removals set.
     names_to_remove = names - remaining_names
 
-    manifests = get_manifests(manifests_root)
+    manifests = tools.get_manifests()
     for manifest_path, manifest in manifests.items():
         remove_names_from_manifest(manifest_path, manifest, names_to_remove)
-
-
-def get_manifests(directory):
-    # TODO: This should probably be a generator! Large repos with client
-    # certificates will be completely loaded into memory!
-    manifests = {}
-    for dirpath, _, filenames in os.walk(directory):
-        for filename in filenames:
-            path = os.path.join(dirpath, filename)
-            try:
-                manifest = FoundationPlist.readPlist(path)
-            except FoundationPlist.FoundationPlistException:
-                print "Error reading manifest {}".format(path)
-                continue
-            manifests[path] = manifest
-
-    return manifests
 
 
 def remove_names_from_manifest(manifest_path, manifest, removals):

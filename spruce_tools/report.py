@@ -348,29 +348,10 @@ def build_expanded_cache():
     expanded_cache["pkgsinfo"] = cache
     expanded_cache["munki_repo"] = munki_repo
     expanded_cache["manifest_items"] = get_manifest_items(
-        get_manifests(munki_repo))
+        tools.get_manifests())
     expanded_cache["repo_data"] = Repo(expanded_cache["pkgsinfo"])
 
     return (expanded_cache, errors)
-
-
-def get_manifests(munki_repo):
-    # TODO: Add handling similar to pkgsinfo for errors. Add errors
-    # to report.
-    manifest_dir = os.path.join(munki_repo, "manifests")
-    manifests = {}
-    for dirpath, _, filenames in os.walk(manifest_dir):
-        for filename in filenames:
-            if filename not in IGNORED_FILES:
-                manifest_filename = os.path.join(dirpath, filename)
-                try:
-                    manifests[manifest_filename] = FoundationPlist.readPlist(
-                        manifest_filename)
-                except FoundationPlist.NSPropertyListSerializationException as err:
-                    robo_print("Failed to open manifest '{}' with error "
-                               "'{}'.".format(manifest_filename, err.message),
-                               LogLevel.WARNING)
-    return manifests
 
 
 def get_manifest_items(manifests):

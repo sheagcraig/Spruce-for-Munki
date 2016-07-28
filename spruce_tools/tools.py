@@ -26,6 +26,7 @@ sys.path.append("/usr/local/munki")
 from munkilib import FoundationPlist
 
 
+IGNORED_FILES = ('.DS_Store',)
 PKGINFO_EXTENSIONS = (".pkginfo", ".plist")
 SPRUCE_PREFS = os.path.expanduser(
     "~/Library/Preferences/com.sheagcraig.spruce.plist")
@@ -63,6 +64,29 @@ def build_prefs():
         prefs[key] = choice
 
     FoundationPlist.writePlist(prefs, SPRUCE_PREFS)
+
+
+def get_manifests():
+    # TODO: Add handling similar to pkgsinfo for errors. Add errors
+    # to report.
+    manifest_dir = os.path.join(get_repo_path(), "manifests")
+    manifests = {}
+    for dirpath, dirnames, filenames in os.walk(manifest_dir):
+        for dirname in dirnames:
+            if dirname.startswith("."):
+                dirnames.remove(dirname)
+
+        for filename in filenames:
+            if filename not in IGNORED_FILES and not filename.startswith("."):
+                manifest_filename = os.path.join(dirpath, filename)
+                try:
+                    manifests[manifest_filename] = FoundationPlist.readPlist(
+                        manifest_filename)
+                except FoundationPlist.NSPropertyListSerializationException as err:
+                    robo_print("Failed to open manifest '{}' with error "
+                               "'{}'.".format(manifest_filename, err.message),
+                               LogLevel.WARNING)
+    return manifests
 
 
 def get_pkg_path():
