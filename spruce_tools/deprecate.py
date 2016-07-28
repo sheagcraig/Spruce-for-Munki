@@ -96,9 +96,7 @@ def get_files_to_remove(args, repo):
 
 
 def get_removals_from_auto(level, repo):
-    munkiimport = FoundationPlist.readPlist(os.path.expanduser(
-        "~/Library/Preferences/com.googlecode.munki.munkiimport.plist"))
-    munki_repo = munkiimport.get("repo_path")
+    munki_repo = tools.get_repo_path()
 
     manifest_items = report.get_manifest_items(
         report.get_manifests(munki_repo))

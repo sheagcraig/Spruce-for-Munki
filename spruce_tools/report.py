@@ -333,9 +333,7 @@ def run_reports(args):
 
 
 def build_expanded_cache():
-    munkiimport = FoundationPlist.readPlist(os.path.expanduser(
-        "~/Library/Preferences/com.googlecode.munki.munkiimport.plist"))
-    munki_repo = munkiimport.get("repo_path")
+    munki_repo = tools.get_repo_path()
 
     # Ensure repo is mounted.
     all_path = os.path.join(munki_repo, "catalogs", "all")

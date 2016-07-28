@@ -27,6 +27,42 @@ from munkilib import FoundationPlist
 
 
 PKGINFO_EXTENSIONS = (".pkginfo", ".plist")
+SPRUCE_PREFS = os.path.expanduser(
+    "~/Library/Preferences/com.sheagcraig.spruce.plist")
+MUNKIIMPORT_PREFS = os.path.expanduser(
+    "~/Library/Preferences/com.googlecode.munki.munkiimport.plist")
+
+def get_prefs():
+    # If prefs don't exist yet, offer to help create them.
+    if not os.path.exists(SPRUCE_PREFS):
+        build_prefs()
+
+    prefs = FoundationPlist.readPlist(SPRUCE_PREFS)
+
+    return prefs
+
+
+def build_prefs():
+    keys = ("repo_path", "repo_url")
+    # If munkiimport prefs exist, base Spruce prefs on them.
+    if os.path.exists(MUNKIIMPORT_PREFS):
+        munkiimport_prefs = get_munkiimport_prefs()
+        prefs = {key: munkiimport_prefs.get(key, "") for key in keys}
+    else:
+        prefs = {"repo_path": "",
+                "repo_url": "",}
+
+    print ("No preference file was found for Spruce. Please allow me to "
+            "break it down for you.")
+    for key in keys:
+        choice = None
+        while choice is None:
+            choice = raw_input(
+                "Please enter a value for '{}' or hit enter to use the "
+                "default value '{}': ".format( key, prefs[key]))
+        prefs[key] = choice
+
+    FoundationPlist.writePlist(prefs, SPRUCE_PREFS)
 
 
 def get_pkg_path():
@@ -48,14 +84,14 @@ def get_all_catalog():
 
 def get_repo_path():
     """Get path to the munki repo according to munkiimport's prefs."""
-    munkiimport_prefs = get_munkiimport_prefs()
-    return munkiimport_prefs.get("repo_path")
+    # munkiimport_prefs = get_munkiimport_prefs()
+    prefs = get_prefs()
+    return os.path.expanduser(prefs["repo_path"])
 
 
 def get_munkiimport_prefs():
     """Get the current user's munkiimport preferences as plist dict."""
-    return FoundationPlist.readPlist(os.path.expanduser(
-        "~/Library/Preferences/com.googlecode.munki.munkiimport.plist"))
+    return FoundationPlist.readPlist(MUNKIIMPORT_PREFS)
 
 
 def get_categories(all_catalog, filter_func=lambda x: True):
