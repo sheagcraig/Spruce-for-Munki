@@ -245,17 +245,16 @@ def move_to_archive(removals, archive_path):
         else:
             removal_paths = [item]
 
-        for item in removal_paths:
-            archive_item = item.replace(
+        for path in removal_paths:
+            archive_item = path.replace(
                 repo_prefix, archive_path, 1)
             make_folders(os.path.dirname(archive_item))
             try:
-                # TODO: Test and remove
-                #shutil.move(item, archive_item)
-                print "Archived '{}'.".format(item)
+                shutil.move(path, archive_item)
+                print "Archived '{}'.".format(path)
             except (IOError, OSError) as err:
                 print "Failed to remove item '{}' with error '{}'.".format(
-                    item, err.strerror)
+                    path, err.strerror)
 
 
 def make_folders(folder):
@@ -271,22 +270,33 @@ def make_folders(folder):
 
 def remove(removals):
     """Delete a list of files."""
-    # TODO: Add exception handling and progress output from archive func.
     for item in removals:
-        if item and os.path.isfile(item):
-            try:
-                os.remove(item)
-            except OSError as error:
-                print ("Unable to remove {} with error: {}".format(
-                    item, error.message))
-        elif item and os.path.isdir(item):
-            try:
-                shutil.rmtree(item)
-            except OSError as error:
-                print ("Unable to remove {} with error: {}".format(
-                    item, error.message))
+        if isinstance(item, ApplicationVersion):
+            removal_paths = [item.pkginfo_path]
+            if item.pkg_path:
+                removal_paths.append(os.path.join(tools.get_pkg_path(),
+                                                  item.pkg_path))
         else:
-            print "Skipping '{}' as it does not seem to exist.".format(item)
+            removal_paths = [item]
+
+        for path in removal_paths:
+            if os.path.isfile(path):
+                try:
+                    os.remove(path)
+                    print "Removed '{}'.".format(path)
+                except (IOError, OSError) as error:
+                    print ("Unable to remove {} with error: {}".format(
+                        path, error.strerror))
+            elif os.path.isdir(path):
+                try:
+                    shutil.rmtree(path)
+                    print "Removed '{}'.".format(path)
+                except (IOError, OSError) as error:
+                    print ("Unable to remove {} with error: {}".format(
+                        path, error.strerror))
+            else:
+                print "Skipping '{}' as it does not seem to exist.".format(
+                    path)
 
 
 def git_rm(removals):
