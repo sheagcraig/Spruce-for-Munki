@@ -55,7 +55,6 @@ def deprecate(args):
 
     removal_type = "archived" if args.archive else "removed"
     print_removals(removals, removal_type)
-    import pdb; pdb.set_trace()
     print_manifest_removals(names)
     warn_about_multiple_refs(removals, repo)
 
@@ -249,6 +248,7 @@ def move_to_archive(removals, archive_path):
                 repo_prefix, archive_path, 1)
             make_folders(os.path.dirname(archive_item))
             try:
+                shutil.move(path, archive_path)
                 print "Archived '{}'.".format(path)
             except (IOError, OSError) as err:
                 print "Failed to remove item '{}' with error '{}'.".format(
