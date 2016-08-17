@@ -245,11 +245,12 @@ def move_to_archive(removals, archive_path):
 
         for path in removal_paths:
             archive_item = path.replace(
-                repo_prefix, archive_path, 1)
+                repo_prefix, "", 1)
+            archive_item = os.path.join(archive_path, archive_item)
             make_folders(os.path.dirname(archive_item))
             try:
-                shutil.move(path, archive_path)
-                print "Archived '{}'.".format(path)
+                shutil.move(path, archive_item)
+                print "Archived '{}' to '{}'.".format(path, archive_item)
             except (IOError, OSError) as err:
                 print "Failed to remove item '{}' with error '{}'.".format(
                     path, err.strerror)
