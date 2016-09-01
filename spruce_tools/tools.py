@@ -35,35 +35,36 @@ MUNKIIMPORT_PREFS = os.path.expanduser(
 
 def get_prefs():
     # If prefs don't exist yet, offer to help create them.
-    if not os.path.exists(SPRUCE_PREFS):
-        build_prefs()
+    try:
+        prefs = FoundationPlist.readPlist(SPRUCE_PREFS)
+    except FoundationPlist.NSPropertyListSerializationException:
+        prefs = None
 
-    prefs = FoundationPlist.readPlist(SPRUCE_PREFS)
+    if not prefs or not prefs.get("repo_path"):
+        prefs = build_prefs()
 
     return prefs
 
 
 def build_prefs():
+    # If munkiimport prefs exist, offer them as defaults.
+    munkiimport_prefs = get_munkiimport_prefs()
     keys = ("repo_path", "repo_url")
-    # If munkiimport prefs exist, base Spruce prefs on them.
-    if os.path.exists(MUNKIIMPORT_PREFS):
-        munkiimport_prefs = get_munkiimport_prefs()
-        prefs = {key: munkiimport_prefs.get(key, "") for key in keys}
-    else:
-        prefs = {"repo_path": "",
-                "repo_url": "",}
+    prefs = {}
 
     print ("No preference file was found for Spruce. Please allow me to "
-            "break it down for you.")
+           "break it down for you.")
     for key in keys:
         choice = None
         while choice is None:
+            default = munkiimport_prefs.get(key, "")
             choice = raw_input(
                 "Please enter a value for '{}' or hit enter to use the "
-                "default value '{}': ".format( key, prefs[key]))
-        prefs[key] = choice
+                "default value '{}': ".format(key, default))
+        prefs[key] = choice if choice else default
 
     FoundationPlist.writePlist(prefs, SPRUCE_PREFS)
+    return prefs
 
 
 def get_manifests():
@@ -103,19 +104,26 @@ def get_all_catalog():
     """Return the Munki 'all' catalog as a plist dict."""
     munki_repo = get_repo_path()
     all_path = os.path.join(munki_repo, "catalogs", "all")
+    if not os.path.exists(all_path):
+        sys.exit(
+            "Repo '{}' is not mounted. Please mount and try again.".format(
+                munki_repo))
     return FoundationPlist.readPlist(all_path)
 
 
 def get_repo_path():
     """Get path to the munki repo according to munkiimport's prefs."""
-    # munkiimport_prefs = get_munkiimport_prefs()
     prefs = get_prefs()
-    return os.path.expanduser(prefs["repo_path"])
+    return os.path.expanduser(prefs.get("repo_path"))
 
 
 def get_munkiimport_prefs():
     """Get the current user's munkiimport preferences as plist dict."""
-    return FoundationPlist.readPlist(MUNKIIMPORT_PREFS)
+    try:
+        prefs = FoundationPlist.readPlist(MUNKIIMPORT_PREFS)
+    except NSPropertyListSerializationException:
+        prefs = {}
+    return prefs
 
 
 def get_categories(all_catalog, filter_func=lambda x: True):
