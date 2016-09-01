@@ -83,6 +83,7 @@ class Report(object):
             self._print_section("metadata")
         else:
             print "\tNo items."
+            print
 
     def _print_section(self, property):
         section = getattr(self, property)
@@ -104,7 +105,14 @@ class Report(object):
 
 
 class OutOfDateReport(Report):
-    name = "Out of Date Items in Production"
+    name = "Out of Date Items Report"
+    description = ("This report collects all items which are in the "
+                   "production catalog, but are not the current "
+                   "release version. Items that have dependencies to "
+                   "current releases through either the `requires` or "
+                   "`update_for` keys are excluded. Items in non-production "
+                   "catalogs are also excluded from consideration by this "
+                   "report.")
     items_keys = (("name", False), ("version", True))
     items_order = ["name", "path"]
 
@@ -132,7 +140,14 @@ class OutOfDateReport(Report):
 
 
 class PathIssuesReport(Report):
-    name = "Pkginfos with Case-Sensitive Pkg Path Errors"
+    name = "Case-Sensitive Path Issues Report"
+    description = (
+        "This report collects all items whose installer item is referenced "
+        "incorrectly due to case-sensitivity errors. Current macOS default "
+        "filesystem settings are case-insensitive, yet many admins host Munki "
+        "with Linux, which is by default case-sensitive. This can lead to "
+        "`installer_item_location` values which work on macOS, but do not "
+        "resolve correctly on case sensitive filesystems.")
     items_keys = (("name", False),)
     items_order = ["name", "path"]
 
@@ -161,7 +176,10 @@ class PathIssuesReport(Report):
 
 
 class MissingInstallerReport(Report):
-    name = "Pkginfos with Missing Installer Items"
+    name = "Missing Installer Report"
+    description = (
+        "This report collects all items which refer to nonexistent "
+        "installers (`installer_item_location`).")
     items_keys = (("name", False),)
     items_order = ["name", "path"]
 
@@ -179,7 +197,10 @@ class MissingInstallerReport(Report):
 
 
 class OrphanedInstallerReport(Report):
-    name = "Pkgs with no Referring Pkginfo"
+    name = "Orphaned Installer Report"
+    description = ("This report collects all pkgs present in the repo which "
+                   "are not referenced by any pkginfo files.")
+
     items_keys = (("path", False),)
     items_order = ["path"]
 
@@ -216,8 +237,11 @@ class OrphanedInstallerReport(Report):
 
 
 class NoUsageReport(Report):
-    name = ("Items That are not in any Manifests and Have no 'requires' or "
-            "'update_for' Dependencies to Used Items.")
+    name = "Unused Item Report"
+    description = ("This report collects all items in the catalogs which are "
+                   "not used in any manifests, are not required by any items "
+                   "that are in use (using the `requires` key), nor are "
+                   "updates for an item in use (using the `update_for` key.")
     items_keys = (("name", False), ("version", True))
     items_order = ["name", "path"]
 
@@ -239,7 +263,9 @@ class NoUsageReport(Report):
 
 
 class PkgsinfoWithErrorsReport(Report):
-    name = "Pkgsinfo with Syntax Errors"
+    name = "Pkginfo Syntax Error Report"
+    description = ("This report collects all items which have invalid plist "
+                   "syntax in their pkginfo file.")
     items_keys = (("path", False),)
     items_order = ["path"]
 
@@ -287,26 +313,32 @@ class SimpleConditionReport(Report):
 
 
 class UnattendedTestingReport(SimpleConditionReport):
-    name = "Unattended Installs in Testing Catalogs"
+    name = "Unattended Installs in Testing Report"
+    description = ("This report collects all items in the testing catalogs "
+                   "which do not require user-intervention (i.e. use "
+                   "the 'unattended_install: True' setting).")
     conditions = (tools.in_testing, tools.is_unattended_install)
 
 
 class UnattendedProdReport(SimpleConditionReport):
-    name = "Items Lacking Unattended in Production Catalog"
+    name = "Attended Installs in Production Report"
+    description = ("This report collects all items in the production catalog "
+                   "which require user-intervention (i.e. do not use the "
+                   "'unattended_install: True' setting).")
     conditions = (tools.in_production, tools.is_not_unattended_install)
 
 
 class ForceInstallTestingReport(SimpleConditionReport):
-    name = "force_install_after_date not set for Testing Items"
+    name = "Testing Non-Forced Installation Report"
     description = ("This report collects all items in the testing catalogs "
-                   "which use the `force_install_after_date` key in their "
-                   "pkginfo.")
+                   "which do not use the `force_install_after_date` key in "
+                   "their pkginfo.")
     conditions = (tools.in_testing,
                   lambda x: x.get("force_install_after_date") is None)
 
 
 class ForceInstallProdReport(SimpleConditionReport):
-    name = "force_install_after_date set for Production Items"
+    name = "Production Forced Installation Report"
     description = ("This report collects all items in the production catalog "
                    "which use the `force_install_after_date` key in their "
                    "pkginfo.")
@@ -320,19 +352,19 @@ def run_reports(args):
     # TODO: Add sorting to output or reporting.
     report_results = []
 
-    # report_results.append(PathIssuesReport(expanded_cache))
-    # report_results.append(MissingInstallerReport(expanded_cache))
-    # report_results.append(OrphanedInstallerReport(expanded_cache))
-    # report_results.append(PkgsinfoWithErrorsReport(errors))
-    # report_results.append(OutOfDateReport(expanded_cache))
-    # report_results.append(NoUsageReport(expanded_cache))
+    report_results.append(PathIssuesReport(expanded_cache))
+    report_results.append(MissingInstallerReport(expanded_cache))
+    report_results.append(OrphanedInstallerReport(expanded_cache))
+    report_results.append(PkgsinfoWithErrorsReport(errors))
+    report_results.append(OutOfDateReport(expanded_cache))
+    report_results.append(NoUsageReport(expanded_cache))
     # Add the results of the last two reports together to determine
     # wasted disk space.
     # expanded_cache["unused_items"] = [item for report in report_results[-2:]
     #                                   for item in report.items]
     # report_results.append(UnusedDiskUsageReport(expanded_cache))
-    # report_results.append(UnattendedTestingReport(expanded_cache))
-    # report_results.append(UnattendedProdReport(expanded_cache))
+    report_results.append(UnattendedTestingReport(expanded_cache))
+    report_results.append(UnattendedProdReport(expanded_cache))
     report_results.append(ForceInstallTestingReport(expanded_cache))
     report_results.append(ForceInstallProdReport(expanded_cache))
 
