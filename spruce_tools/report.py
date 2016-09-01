@@ -19,6 +19,7 @@ from distutils.version import LooseVersion
 from operator import itemgetter
 import os
 import sys
+import textwrap
 
 import cruftmoji
 from repo import Repo
@@ -45,6 +46,7 @@ class Report(object):
             output order.
     """
     name = "Report"
+    description = ""
     items_keys = []
     items_order = []
     metadata_order = []
@@ -63,6 +65,12 @@ class Report(object):
 
     def print_report(self):
         print "{0} {1}{0} :".format(cruftmoji.SPRUCE, self.name)
+        if self.description:
+            tab = "\t"
+            wrapper = textwrap.TextWrapper(
+                width=73, initial_indent=tab, subsequent_indent=tab)
+            print "\n".join(wrapper.wrap(self.description))
+            print
         if self.items or self.metadata:
             if self.items_keys:
                 for key, reverse in reversed(self.items_keys):
@@ -72,11 +80,9 @@ class Report(object):
                     else:
                         self.items.sort(key=itemgetter(key), reverse=reverse)
             self._print_section("items")
-            print
             self._print_section("metadata")
-            print
         else:
-            print "\tNone"
+            print "\tNo items."
 
     def _print_section(self, property):
         section = getattr(self, property)
@@ -91,6 +97,7 @@ class Report(object):
                     if not key in order:
                         print "\t{}: {}".format(key, item[key])
                 print "\t" + self.separator
+            print
 
     def as_dict(self):
         return {"items": self.items, "metadata": self.metadata}
@@ -291,12 +298,18 @@ class UnattendedProdReport(SimpleConditionReport):
 
 class ForceInstallTestingReport(SimpleConditionReport):
     name = "force_install_after_date not set for Testing Items"
+    description = ("This report collects all items in the testing catalogs "
+                   "which use the `force_install_after_date` key in their "
+                   "pkginfo.")
     conditions = (tools.in_testing,
                   lambda x: x.get("force_install_after_date") is None)
 
 
 class ForceInstallProdReport(SimpleConditionReport):
     name = "force_install_after_date set for Production Items"
+    description = ("This report collects all items in the production catalog "
+                   "which use the `force_install_after_date` key in their "
+                   "pkginfo.")
     conditions = (tools.in_production,
                   lambda x: x.get("force_install_after_date") is not None)
 
@@ -307,19 +320,19 @@ def run_reports(args):
     # TODO: Add sorting to output or reporting.
     report_results = []
 
-    report_results.append(PathIssuesReport(expanded_cache))
-    report_results.append(MissingInstallerReport(expanded_cache))
-    report_results.append(OrphanedInstallerReport(expanded_cache))
-    report_results.append(PkgsinfoWithErrorsReport(errors))
-    report_results.append(OutOfDateReport(expanded_cache))
-    report_results.append(NoUsageReport(expanded_cache))
+    # report_results.append(PathIssuesReport(expanded_cache))
+    # report_results.append(MissingInstallerReport(expanded_cache))
+    # report_results.append(OrphanedInstallerReport(expanded_cache))
+    # report_results.append(PkgsinfoWithErrorsReport(errors))
+    # report_results.append(OutOfDateReport(expanded_cache))
+    # report_results.append(NoUsageReport(expanded_cache))
     # Add the results of the last two reports together to determine
     # wasted disk space.
     # expanded_cache["unused_items"] = [item for report in report_results[-2:]
     #                                   for item in report.items]
     # report_results.append(UnusedDiskUsageReport(expanded_cache))
-    report_results.append(UnattendedTestingReport(expanded_cache))
-    report_results.append(UnattendedProdReport(expanded_cache))
+    # report_results.append(UnattendedTestingReport(expanded_cache))
+    # report_results.append(UnattendedProdReport(expanded_cache))
     report_results.append(ForceInstallTestingReport(expanded_cache))
     report_results.append(ForceInstallProdReport(expanded_cache))
 
