@@ -104,10 +104,6 @@ def get_all_catalog():
     """Return the Munki 'all' catalog as a plist dict."""
     munki_repo = get_repo_path()
     all_path = os.path.join(munki_repo, "catalogs", "all")
-    if not os.path.exists(all_path):
-        sys.exit(
-            "Repo '{}' is not mounted. Please mount and try again.".format(
-                munki_repo))
     return FoundationPlist.readPlist(all_path)
 
 
@@ -134,6 +130,7 @@ def get_categories(all_catalog, filter_func=lambda x: True):
 
 def get_icons_path():
     """Get path to the munki icons repo according to munkiimport."""
+    # TODO: This is brittle. Fix it.
     munkiimport_prefs = get_munkiimport_prefs()
     return munkiimport_prefs.get(
         "IconURL", os.path.join(munkiimport_prefs.get("repo_path"), "icons"))
@@ -144,7 +141,6 @@ def get_unique_names(all_catalog):
     return {pkginfo.get("name", "*NO NAME*") for pkginfo in all_catalog}
 
 
-# TODO: This needs to mount the repo if it isn't already.
 def build_pkginfo_cache(repo):
     """Build a dictionary of pkgsinfo.
 

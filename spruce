@@ -23,6 +23,7 @@ by product, category, etc.
 
 
 import argparse
+import os
 import sys
 
 import spruce_tools
@@ -35,6 +36,10 @@ def main():
     """Handle arguments and execute commands."""
     try:
         args = get_argument_parser().parse_args()
+        # We can't do anything without the repo. Bail early if it's not
+        # mounted.
+        if not os.path.exists(spruce_tools.get_repo_path()):
+            sys.exit("Repo is not mounted. Please mount and try again.")
         args.func(args)
     except KeyboardInterrupt:
         print
